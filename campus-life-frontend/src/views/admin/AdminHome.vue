@@ -2,30 +2,21 @@
   <div class="admin-home">
     <!-- 项目标题和描述 -->
     <div class="project-header">
-      <h1 class="project-title">校园生活服务平台</h1>
+      <h1 class="project-title">Campus Life 校园生活服务平台</h1>
       <p class="project-description">
-        此项目是基于 Spring Boot + Vue 架构的前后端分离系统。
-        Web 端使用 Vue3 + TypeScript + Vite 进行开发，后端使用 Spring Boot + MyBatis-Plus 进行开发。
-        使用 MySQL 作为数据库，支持 OAuth 第三方登录和 WebSocket 实时通信。
+        Campus Life 是一个前后端分离的校园生活全栈项目，包含用户端、商家端、管理端、主业务后端、AI 服务和 API 网关。
+        平台支持校园社区、商家优惠券、订单支付、退款处理、消息通知、后台审核、AI 对话和知识库问答等能力。
       </p>
       <div class="version-info">
         <span class="version-label">当前版本：</span>
         <span class="version-value">v1.0.0</span>
       </div>
       <div class="project-actions">
-        <a href="https://github.com" target="_blank" class="action-btn btn-open-source">
+        <a href="https://github.com/bianjunfeng/campus-life" target="_blank" rel="noopener noreferrer" class="action-btn btn-open-source">
           <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
             <path d="M9 19c-5 1.5-5-2.5-7-3m14 6v-3.87a3.37 3.37 0 0 0-.94-2.61c3.14-.35 6.44-1.54 6.44-7A5.44 5.44 0 0 0 20 4.77 5.07 5.07 0 0 0 19.91 1S18.73.65 16 2.48a13.38 13.38 0 0 0-7 0C6.27.65 5.09 1 5.09 1A5.07 5.07 0 0 0 5 4.77a5.44 5.44 0 0 0-1.5 3.78c0 5.42 3.3 6.61 6.44 7A3.37 3.37 0 0 0 9 18.13V22"></path>
           </svg>
           免费开源
-        </a>
-        <a href="https://gitee.com" target="_blank" class="action-btn btn-gitee">
-          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-            <path d="M12 2L2 7l10 5 10-5-10-5z"></path>
-            <path d="M2 17l10 5 10-5"></path>
-            <path d="M2 12l10 5 10-5"></path>
-          </svg>
-          访问码云
         </a>
         <RouterLink to="/admin/dashboard" class="action-btn btn-homepage">
           <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
@@ -39,7 +30,7 @@
 
     <!-- 主要内容区域 -->
     <div class="main-content-grid">
-      <!-- 左侧：项目部署 -->
+      <!-- 左侧：项目模块 -->
       <div class="content-card deployment-card">
         <h2 class="card-title">
           <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
@@ -47,34 +38,38 @@
             <polyline points="3.27 6.96 12 12.01 20.73 6.96"></polyline>
             <line x1="12" y1="22.08" x2="12" y2="12"></line>
           </svg>
-          项目部署
+          项目模块
         </h2>
         <div class="card-content">
           <p class="deployment-tip">
-            部署该项目选择 <strong>阿里云/腾讯云 "2核2G"</strong> 配置即可
+            当前项目由 <strong>前端、主业务后端、AI 服务、API 网关</strong> 组成，管理端通过网关访问业务与 AI 能力。
           </p>
-          
-          <div class="coupon-section">
-            <h3>云产品优惠券</h3>
-            <div class="coupon-item">
-              <p>领取阿里云通用云产品1888优惠券</p>
-              <a href="https://www.aliyun.com" target="_blank" class="coupon-link">点我进入</a>
-            </div>
-            <div class="coupon-item">
-              <p>领取腾讯云通用云产品2860优惠券</p>
-              <a href="https://cloud.tencent.com" target="_blank" class="coupon-link">点我进入</a>
-            </div>
-          </div>
 
           <div class="server-section">
-            <h3>服务器折扣</h3>
+            <h3>本地服务地址</h3>
             <div class="server-item">
-              <p>阿里云服务器折扣区</p>
-              <a href="https://www.aliyun.com" target="_blank" class="server-link">点我进入</a>
+              <p>用户端 Web</p>
+              <span class="server-link">http://127.0.0.1:5173</span>
             </div>
             <div class="server-item">
-              <p>腾讯云服务器秒杀区</p>
-              <a href="https://cloud.tencent.com" target="_blank" class="server-link">点我进入</a>
+              <p>管理端 Web</p>
+              <span class="server-link">http://127.0.0.1:5174</span>
+            </div>
+            <div class="server-item">
+              <p>商家端 Web</p>
+              <span class="server-link">http://127.0.0.1:5175</span>
+            </div>
+            <div class="server-item">
+              <p>API 网关</p>
+              <span class="server-link">http://127.0.0.1:8090</span>
+            </div>
+            <div class="server-item">
+              <p>主业务后端</p>
+              <span class="server-link">http://127.0.0.1:8080</span>
+            </div>
+            <div class="server-item">
+              <p>AI 服务</p>
+              <span class="server-link">http://127.0.0.1:8083</span>
             </div>
           </div>
 
@@ -84,7 +79,7 @@
               <line x1="12" y1="16" x2="12" y2="12"></line>
               <line x1="12" y1="8" x2="12.01" y2="8"></line>
             </svg>
-            云产品通用红包，可叠加官网常规优惠使用。（仅限新用户）
+            线上部署时建议通过 API 网关统一入口暴露服务，并为 MySQL、Redis、消息队列和 AI 配置独立环境变量。
           </p>
         </div>
       </div>
@@ -103,27 +98,27 @@
           <div class="tech-section">
             <h3>后端技术</h3>
             <div class="tech-tags">
-              <span class="tech-tag">Spring Boot</span>
+              <span class="tech-tag">Spring Boot 3.4</span>
+              <span class="tech-tag">Spring Cloud Gateway</span>
               <span class="tech-tag">Spring Security</span>
               <span class="tech-tag">JWT</span>
-              <span class="tech-tag">MyBatis-Plus</span>
+              <span class="tech-tag">MyBatis</span>
               <span class="tech-tag">MySQL</span>
-              <span class="tech-tag">Druid</span>
-              <span class="tech-tag">Fastjson</span>
-              <span class="tech-tag">WebSocket</span>
-              <span class="tech-tag">OAuth2</span>
+              <span class="tech-tag">Redis</span>
+              <span class="tech-tag">RabbitMQ</span>
+              <span class="tech-tag">Kafka</span>
+              <span class="tech-tag">Elasticsearch</span>
+              <span class="tech-tag">Spring AI</span>
             </div>
           </div>
           <div class="tech-section">
             <h3>前端技术</h3>
             <div class="tech-tags">
               <span class="tech-tag">Vue 3</span>
-              <span class="tech-tag">TypeScript</span>
               <span class="tech-tag">Vite</span>
               <span class="tech-tag">Vue Router</span>
               <span class="tech-tag">Axios</span>
               <span class="tech-tag">ECharts</span>
-              <span class="tech-tag">WebSocket</span>
             </div>
           </div>
         </div>
@@ -145,44 +140,42 @@
             <div class="changelog-item">
               <div class="changelog-header">
                 <span class="changelog-version">v1.0.0</span>
-                <span class="changelog-date">2024-12-01</span>
+                <span class="changelog-date">2026-01-20</span>
               </div>
               <div class="changelog-content">
                 <ul>
-                  <li>✅ 完成基础功能开发</li>
-                  <li>✅ 实现用户认证和授权</li>
-                  <li>✅ 完成帖子管理功能</li>
-                  <li>✅ 实现评论系统</li>
-                  <li>✅ 完成商家和优惠券管理</li>
-                  <li>✅ 实现管理后台</li>
-                  <li>✅ 支持 OAuth 第三方登录</li>
-                  <li>✅ 实现 WebSocket 实时通信</li>
+                  <li>✅ 完成用户端、商家端、管理端三端入口</li>
+                  <li>✅ 完成校园社区、评论、点赞、收藏和举报管理</li>
+                  <li>✅ 完成商家、优惠券、订单、退款和支付对账管理</li>
+                  <li>✅ 完成用户认证、学生认证和商家认证审核</li>
+                  <li>✅ 接入 API 网关、JWT 鉴权和 Redis 限流</li>
+                  <li>✅ 接入 AI 智能体、知识库检索和模型网关</li>
                 </ul>
               </div>
             </div>
             <div class="changelog-item">
               <div class="changelog-header">
                 <span class="changelog-version">v0.9.0</span>
-                <span class="changelog-date">2024-11-15</span>
+                <span class="changelog-date">2025-12-15</span>
               </div>
               <div class="changelog-content">
                 <ul>
-                  <li>✅ 完成前端页面开发</li>
-                  <li>✅ 实现响应式设计</li>
-                  <li>✅ 完成 API 接口对接</li>
+                  <li>✅ 完成主业务后端、AI 服务和 API 网关拆分</li>
+                  <li>✅ 完成 MySQL、Redis、消息队列和搜索能力接入</li>
+                  <li>✅ 完成管理端核心业务接口对接</li>
                 </ul>
               </div>
             </div>
             <div class="changelog-item">
               <div class="changelog-header">
                 <span class="changelog-version">v0.8.0</span>
-                <span class="changelog-date">2024-11-01</span>
+                <span class="changelog-date">2025-11-30</span>
               </div>
               <div class="changelog-content">
                 <ul>
-                  <li>✅ 完成数据库设计</li>
-                  <li>✅ 实现后端基础功能</li>
-                  <li>✅ 完成项目架构搭建</li>
+                  <li>✅ 完成项目基础架构搭建</li>
+                  <li>✅ 完成用户、内容、商家和订单基础模型设计</li>
+                  <li>✅ 完成前端三端路由和基础布局</li>
                 </ul>
               </div>
             </div>
@@ -283,16 +276,6 @@ const showMoreChangelog = ref(false)
   box-shadow: 0 4px 12px rgba(231, 76, 60, 0.4);
 }
 
-.btn-gitee {
-  background: #1677ff;
-}
-
-.btn-gitee:hover {
-  background: #0958d9;
-  transform: translateY(-2px);
-  box-shadow: 0 4px 12px rgba(22, 119, 255, 0.4);
-}
-
 .btn-homepage {
   background: rgba(255, 255, 255, 0.2);
   border: 1px solid rgba(255, 255, 255, 0.3);
@@ -349,12 +332,10 @@ const showMoreChangelog = ref(false)
   font-weight: 600;
 }
 
-.coupon-section,
 .server-section {
   margin-bottom: 20px;
 }
 
-.coupon-section h3,
 .server-section h3 {
   margin: 0 0 12px 0;
   font-size: 16px;
@@ -362,7 +343,6 @@ const showMoreChangelog = ref(false)
   font-weight: 600;
 }
 
-.coupon-item,
 .server-item {
   display: flex;
   justify-content: space-between;
@@ -373,14 +353,12 @@ const showMoreChangelog = ref(false)
   margin-bottom: 8px;
 }
 
-.coupon-item p,
 .server-item p {
   margin: 0;
   font-size: 14px;
   color: #666;
 }
 
-.coupon-link,
 .server-link {
   color: #1677ff;
   text-decoration: none;
@@ -389,10 +367,8 @@ const showMoreChangelog = ref(false)
   transition: color 0.3s;
 }
 
-.coupon-link:hover,
 .server-link:hover {
   color: #0958d9;
-  text-decoration: underline;
 }
 
 .coupon-note {
