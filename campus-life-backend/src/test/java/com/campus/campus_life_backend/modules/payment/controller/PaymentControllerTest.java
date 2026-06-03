@@ -10,6 +10,7 @@ import com.campus.campus_life_backend.modules.payment.dto.PaymentResponse;
 import com.campus.campus_life_backend.modules.payment.entity.PaymentOrder;
 import com.campus.campus_life_backend.modules.payment.service.PaymentCallbackService;
 import com.campus.campus_life_backend.modules.payment.service.PaymentIdempotencyService;
+import com.campus.campus_life_backend.modules.payment.service.PaymentIdempotencyService.IdempotencyLock;
 import com.campus.campus_life_backend.modules.payment.service.PaymentOrderDomainService;
 import com.campus.campus_life_backend.modules.payment.service.PaymentRefundWorkflowService;
 import com.campus.campus_life_backend.modules.payment.service.PaymentService;
@@ -25,6 +26,7 @@ import org.springframework.test.util.ReflectionTestUtils;
 import java.math.BigDecimal;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.Optional;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
@@ -92,8 +94,10 @@ class PaymentControllerTest {
                 "subject", "优惠券订单",
                 "description", "优惠券购买"
         ));
+        IdempotencyLock createLock = new IdempotencyLock("create-key", "token-1");
         when(paymentIdempotencyService.resolveCreateKey(null, "ORD-1001", 1L, "alipay")).thenReturn("create-key");
-        when(paymentIdempotencyService.acquireCreate("create-key", java.time.Duration.ofSeconds(8))).thenReturn(true);
+        when(paymentIdempotencyService.tryAcquireCreate("create-key", PaymentIdempotencyService.CREATE_PROCESSING_TTL))
+                .thenReturn(Optional.of(createLock));
         when(paymentOrderDomainService.createVoucherPaymentOrder(order, 1L, "alipay", "优惠券订单", "优惠券购买", "create-key"))
                 .thenReturn(paymentOrder);
         when(paymentService.createPayment(any(PaymentRequest.class))).thenReturn(paymentResponse);
@@ -105,6 +109,8 @@ class PaymentControllerTest {
         assertEquals(200, response.getCode());
         assertNotNull(response.getData());
         assertEquals(0, new BigDecimal("99.00").compareTo(requestCaptor.getValue().getAmount()));
+        verify(paymentIdempotencyService).completeCreate(createLock);
+        verify(paymentIdempotencyService, never()).releaseCreate(createLock);
     }
 
     @Test
@@ -132,8 +138,10 @@ class PaymentControllerTest {
                 "subject", "优惠券订单",
                 "description", "优惠券购买"
         ));
+        IdempotencyLock createLock = new IdempotencyLock("create-key", "token-2");
         when(paymentIdempotencyService.resolveCreateKey(null, "ORD-1002", 1L, "alipay")).thenReturn("create-key");
-        when(paymentIdempotencyService.acquireCreate("create-key", java.time.Duration.ofSeconds(8))).thenReturn(true);
+        when(paymentIdempotencyService.tryAcquireCreate("create-key", PaymentIdempotencyService.CREATE_PROCESSING_TTL))
+                .thenReturn(Optional.of(createLock));
         when(paymentOrderDomainService.createVoucherPaymentOrder(order, 1L, "alipay", "优惠券订单", "优惠券购买", "create-key"))
                 .thenReturn(paymentOrder);
         when(paymentService.createPayment(any(PaymentRequest.class))).thenThrow(new RuntimeException("alipay appId invalid"));
@@ -145,6 +153,8 @@ class PaymentControllerTest {
 
         assertEquals(BusinessErrorCode.PAYMENT_CREATE_FAILED.getCode(), exception.getCode());
         assertEquals("创建支付订单失败，请稍后重试", exception.getMessage());
+        verify(paymentIdempotencyService).releaseCreate(createLock);
+        verify(paymentIdempotencyService, never()).completeCreate(createLock);
     }
 
     @Test

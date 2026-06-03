@@ -16,6 +16,7 @@ import com.campus.campus_life_backend.modules.payment.entity.PaymentOrder;
 import com.campus.campus_life_backend.modules.payment.enums.PaymentMethod;
 import com.campus.campus_life_backend.modules.payment.service.PaymentCallbackService;
 import com.campus.campus_life_backend.modules.payment.service.PaymentIdempotencyService;
+import com.campus.campus_life_backend.modules.payment.service.PaymentIdempotencyService.IdempotencyLock;
 import com.campus.campus_life_backend.modules.payment.service.PaymentOrderDomainService;
 import com.campus.campus_life_backend.modules.payment.service.PaymentService;
 import com.campus.campus_life_backend.modules.payment.service.PaymentRefundWorkflowService;
@@ -32,8 +33,8 @@ import java.math.BigDecimal;
 import java.net.URI;
 import java.net.URLDecoder;
 import java.nio.charset.StandardCharsets;
-import java.time.Duration;
 import java.time.LocalDateTime;
+import java.util.Optional;
 import java.util.HashMap;
 import java.util.Map;
 
@@ -117,8 +118,11 @@ public class PaymentController {
                 userId,
                 request.getPaymentMethod()
         );
-        boolean acquired = paymentIdempotencyService.acquireCreate(createKey, Duration.ofSeconds(8));
-        if (!acquired) {
+        Optional<IdempotencyLock> idempotencyLock = paymentIdempotencyService.tryAcquireCreate(
+                createKey,
+                PaymentIdempotencyService.CREATE_PROCESSING_TTL
+        );
+        if (idempotencyLock.isEmpty()) {
             throw new BusinessException(BusinessErrorCode.CONFLICT, "支付请求处理中，请勿重复提交");
         }
         orderFacadeService.bindPaymentIdempotencyKeyIfPending(order.getId(), createKey);
@@ -137,6 +141,7 @@ public class PaymentController {
                 PaymentResponse response = new PaymentResponse();
                 response.setPaymentMethod(PaymentMethod.WALLET.getCode());
                 response.setPaymentOrderNo(paymentOrder.getPaymentNo());
+                paymentIdempotencyService.completeCreate(idempotencyLock.get());
                 return ApiResponse.success(response);
             }
 
@@ -156,14 +161,15 @@ public class PaymentController {
             PaymentResponse response = paymentService.createPayment(channelRequest);
             paymentOrderDomainService.markWaitingForPay(paymentOrder);
             response.setPaymentOrderNo(paymentOrder.getPaymentNo());
+            paymentIdempotencyService.completeCreate(idempotencyLock.get());
             return ApiResponse.success(response);
         } catch (BusinessException e) {
+            paymentIdempotencyService.releaseCreate(idempotencyLock.get());
             throw e;
         } catch (Exception e) {
+            paymentIdempotencyService.releaseCreate(idempotencyLock.get());
             logger.error("创建支付订单失败", e);
             throw new BusinessException(BusinessErrorCode.PAYMENT_CREATE_FAILED, "创建支付订单失败，请稍后重试", e);
-        } finally {
-            paymentIdempotencyService.releaseCreate(createKey);
         }
     }
 
@@ -250,31 +256,35 @@ public class PaymentController {
         }
 
         String refundKey = paymentIdempotencyService.resolveRefundKey(idempotencyKey, paymentOrder.getPaymentNo(), userId);
-        boolean acquired = paymentIdempotencyService.acquireRefund(refundKey, Duration.ofSeconds(8));
-        if (!acquired) {
+        Optional<IdempotencyLock> idempotencyLock = paymentIdempotencyService.tryAcquireRefund(
+                refundKey,
+                PaymentIdempotencyService.REFUND_PROCESSING_TTL
+        );
+        if (idempotencyLock.isEmpty()) {
             throw new BusinessException(BusinessErrorCode.CONFLICT, "退款请求处理中，请勿重复提交");
         }
 
         try {
-            return ApiResponse.success(
-                    paymentRefundWorkflowService.submitVoucherRefundApplication(
-                            paymentOrder,
-                            order,
-                            userId,
-                            request.getRefundAmount().stripTrailingZeros(),
-                            request.getReason(),
-                            refundKey
-                    )
+            PaymentRefundResponse refundResponse = paymentRefundWorkflowService.submitVoucherRefundApplication(
+                    paymentOrder,
+                    order,
+                    userId,
+                    request.getRefundAmount().stripTrailingZeros(),
+                    request.getReason(),
+                    refundKey
             );
+            paymentIdempotencyService.completeRefund(idempotencyLock.get());
+            return ApiResponse.success(refundResponse);
         } catch (BusinessException e) {
+            paymentIdempotencyService.releaseRefund(idempotencyLock.get());
             throw e;
         } catch (IllegalArgumentException e) {
+            paymentIdempotencyService.releaseRefund(idempotencyLock.get());
             throw new BusinessException(BusinessErrorCode.INVALID_PARAM, e.getMessage(), e);
         } catch (Exception e) {
+            paymentIdempotencyService.releaseRefund(idempotencyLock.get());
             logger.error("提交退款申请失败", e);
             throw new BusinessException(BusinessErrorCode.INTERNAL_ERROR, "提交退款申请失败，请稍后重试", e);
-        } finally {
-            paymentIdempotencyService.releaseRefund(refundKey);
         }
     }
 
