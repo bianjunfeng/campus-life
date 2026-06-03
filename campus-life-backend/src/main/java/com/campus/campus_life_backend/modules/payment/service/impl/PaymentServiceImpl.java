@@ -1,9 +1,12 @@
 package com.campus.campus_life_backend.modules.payment.service.impl;
 
+import com.campus.campus_life_backend.modules.payment.channel.PaymentChannelHandler;
 import com.campus.campus_life_backend.modules.payment.channel.PaymentChannelRegistry;
 import com.campus.campus_life_backend.modules.payment.dto.PaymentRequest;
 import com.campus.campus_life_backend.modules.payment.dto.PaymentResponse;
+import com.campus.campus_life_backend.modules.payment.entity.PaymentOrder;
 import com.campus.campus_life_backend.modules.payment.enums.PaymentMethod;
+import com.campus.campus_life_backend.modules.payment.service.PaymentOrderDomainService;
 import com.campus.campus_life_backend.modules.payment.service.PaymentService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Primary;
@@ -19,17 +22,15 @@ import java.math.BigDecimal;
 public class PaymentServiceImpl implements PaymentService {
 
     private final PaymentChannelRegistry channelRegistry;
-    private final AlipayPaymentServiceImpl alipayPaymentService;
-    private final WechatPaymentServiceImpl wechatPaymentService;
+    private final PaymentOrderDomainService paymentOrderDomainService;
 
     @Autowired
     public PaymentServiceImpl(
             PaymentChannelRegistry channelRegistry,
-            AlipayPaymentServiceImpl alipayPaymentService,
-            WechatPaymentServiceImpl wechatPaymentService) {
+            PaymentOrderDomainService paymentOrderDomainService
+    ) {
         this.channelRegistry = channelRegistry;
-        this.alipayPaymentService = alipayPaymentService;
-        this.wechatPaymentService = wechatPaymentService;
+        this.paymentOrderDomainService = paymentOrderDomainService;
     }
 
     @Override
@@ -50,29 +51,44 @@ public class PaymentServiceImpl implements PaymentService {
         return channelRegistry.require(method.getCode())
                 .handlePaymentCallback(paymentMethod, callbackData);
     }
-    
+
     @Override
     public String queryPaymentStatus(String orderNo) {
-        // 杩欓噷闇€瑕佹牴鎹鍗曞彿鏌ヨ璁㈠崟锛岃幏鍙栨敮浠樻柟寮?
-        // 鏆傛椂鍏堝皾璇曚袱绉嶆柟寮忔煡璇?
-        String alipayStatus = alipayPaymentService.queryPaymentStatus(orderNo);
-        if (!"UNKNOWN".equals(alipayStatus)) {
-            return alipayStatus;
+        PaymentOrder paymentOrder = paymentOrderDomainService.resolveForChannelRouting(orderNo);
+        String channelCode = resolveChannelCode(paymentOrder);
+        if (channelCode == null || !isRegisteredChannel(channelCode)) {
+            return "UNKNOWN";
         }
-        
-        String wechatStatus = wechatPaymentService.queryPaymentStatus(orderNo);
-        return wechatStatus;
+        PaymentChannelHandler handler = channelRegistry.require(channelCode);
+        String queryKey = paymentOrder.getPaymentNo() != null ? paymentOrder.getPaymentNo() : orderNo;
+        return handler.queryPaymentStatus(queryKey);
     }
-    
+
     @Override
     public boolean refund(String orderNo, BigDecimal refundAmount, String refundReason) {
-        // 杩欓噷闇€瑕佹牴鎹鍗曞彿鏌ヨ璁㈠崟锛岃幏鍙栨敮浠樻柟寮?
-        // 鏆傛椂鍏堝皾璇曚袱绉嶆柟寮忛€€娆?
-        if (alipayPaymentService.refund(orderNo, refundAmount, refundReason)) {
-            return true;
+        PaymentOrder paymentOrder = paymentOrderDomainService.resolveForChannelRouting(orderNo);
+        String channelCode = resolveChannelCode(paymentOrder);
+        if (channelCode == null || !isRegisteredChannel(channelCode)) {
+            return false;
         }
-        
-        return wechatPaymentService.refund(orderNo, refundAmount, refundReason);
+        PaymentChannelHandler handler = channelRegistry.require(channelCode);
+        String refundKey = paymentOrder.getPaymentNo() != null ? paymentOrder.getPaymentNo() : orderNo;
+        return handler.refund(refundKey, refundAmount, refundReason);
+    }
+
+    private static String resolveChannelCode(PaymentOrder paymentOrder) {
+        if (paymentOrder == null || paymentOrder.getChannel() == null || paymentOrder.getChannel().isBlank()) {
+            return null;
+        }
+        return paymentOrder.getChannel().trim().toLowerCase();
+    }
+
+    private boolean isRegisteredChannel(String channelCode) {
+        try {
+            channelRegistry.require(channelCode);
+            return true;
+        } catch (IllegalArgumentException ignored) {
+            return false;
+        }
     }
 }
-

@@ -83,6 +83,20 @@ public class PaymentOrderDomainService {
         return paymentOrderMapper.findByPaymentNo(paymentNo);
     }
 
+    /**
+     * 按支付单号或业务订单号解析用于渠道路由的支付单（先 paymentNo，再最新券订单支付单）。
+     */
+    public PaymentOrder resolveForChannelRouting(String orderOrPaymentNo) {
+        if (orderOrPaymentNo == null || orderOrPaymentNo.isBlank()) {
+            return null;
+        }
+        PaymentOrder byPaymentNo = findByPaymentNo(orderOrPaymentNo);
+        if (byPaymentNo != null) {
+            return byPaymentNo;
+        }
+        return findLatestVoucherPaymentByBizOrderNo(orderOrPaymentNo);
+    }
+
     public BigDecimal getExpectedAmountByPaymentNo(String paymentNo) {
         PaymentOrder paymentOrder = findByPaymentNo(paymentNo);
         return paymentOrder == null ? null : paymentOrder.getAmount();
