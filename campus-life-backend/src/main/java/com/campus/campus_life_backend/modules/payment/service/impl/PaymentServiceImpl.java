@@ -1,11 +1,10 @@
 package com.campus.campus_life_backend.modules.payment.service.impl;
 
+import com.campus.campus_life_backend.modules.payment.channel.PaymentChannelRegistry;
 import com.campus.campus_life_backend.modules.payment.dto.PaymentRequest;
 import com.campus.campus_life_backend.modules.payment.dto.PaymentResponse;
 import com.campus.campus_life_backend.modules.payment.enums.PaymentMethod;
 import com.campus.campus_life_backend.modules.payment.service.PaymentService;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Primary;
 import org.springframework.stereotype.Service;
@@ -13,56 +12,43 @@ import org.springframework.stereotype.Service;
 import java.math.BigDecimal;
 
 /**
- * 鏀粯鏈嶅姟瀹炵幇锛堢粺涓€鍏ュ彛锛?
+ * 支付服务实现（统一入口）
  */
 @Service
 @Primary
 public class PaymentServiceImpl implements PaymentService {
-    
-    private static final Logger logger = LoggerFactory.getLogger(PaymentServiceImpl.class);
-    
+
+    private final PaymentChannelRegistry channelRegistry;
     private final AlipayPaymentServiceImpl alipayPaymentService;
     private final WechatPaymentServiceImpl wechatPaymentService;
-    
+
     @Autowired
     public PaymentServiceImpl(
+            PaymentChannelRegistry channelRegistry,
             AlipayPaymentServiceImpl alipayPaymentService,
             WechatPaymentServiceImpl wechatPaymentService) {
+        this.channelRegistry = channelRegistry;
         this.alipayPaymentService = alipayPaymentService;
         this.wechatPaymentService = wechatPaymentService;
     }
-    
+
     @Override
     public PaymentResponse createPayment(PaymentRequest request) {
         PaymentMethod method = PaymentMethod.fromCode(request.getPaymentMethod());
-        
-        switch (method) {
-            case ALIPAY:
-                return alipayPaymentService.createPayment(request);
-            case WECHAT:
-                return wechatPaymentService.createPayment(request);
-            case WALLET:
-                throw new IllegalArgumentException("钱包支付请通过统一支付入口处理");
-            default:
-                throw new IllegalArgumentException("涓嶆敮鎸佺殑鏀粯鏂瑰紡: " + request.getPaymentMethod());
+        if (method == PaymentMethod.WALLET) {
+            throw new IllegalArgumentException("钱包支付请通过统一支付入口处理");
         }
+        return channelRegistry.require(method.getCode()).createChannelPayment(request);
     }
-    
+
     @Override
     public boolean handlePaymentCallback(String paymentMethod, String callbackData) {
         PaymentMethod method = PaymentMethod.fromCode(paymentMethod);
-        
-        switch (method) {
-            case ALIPAY:
-                return alipayPaymentService.handlePaymentCallback(paymentMethod, callbackData);
-            case WECHAT:
-                return wechatPaymentService.handlePaymentCallback(paymentMethod, callbackData);
-            case WALLET:
-                return true;
-            default:
-                logger.warn("鏈煡鐨勬敮浠樻柟寮忓洖璋? {}", paymentMethod);
-                return false;
+        if (method == PaymentMethod.WALLET) {
+            return true;
         }
+        return channelRegistry.require(method.getCode())
+                .handlePaymentCallback(paymentMethod, callbackData);
     }
     
     @Override

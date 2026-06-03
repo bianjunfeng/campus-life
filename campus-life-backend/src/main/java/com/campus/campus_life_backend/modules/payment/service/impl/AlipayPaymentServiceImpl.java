@@ -12,8 +12,10 @@ import com.alipay.api.response.AlipayTradeQueryResponse;
 import com.alipay.api.response.AlipayTradeRefundResponse;
 import com.campus.campus_life_backend.common.exception.BusinessErrorCode;
 import com.campus.campus_life_backend.common.exception.BusinessException;
+import com.campus.campus_life_backend.modules.payment.channel.PaymentChannelHandler;
 import com.campus.campus_life_backend.modules.payment.dto.PaymentRequest;
 import com.campus.campus_life_backend.modules.payment.dto.PaymentResponse;
+import com.campus.campus_life_backend.modules.payment.enums.PaymentMethod;
 import com.campus.campus_life_backend.modules.payment.service.PaymentCallbackService;
 import com.campus.campus_life_backend.modules.payment.service.PaymentService;
 import org.slf4j.Logger;
@@ -34,7 +36,7 @@ import java.util.Map;
  * 支付宝支付服务实现
  */
 @Service
-public class AlipayPaymentServiceImpl implements PaymentService {
+public class AlipayPaymentServiceImpl implements PaymentService, PaymentChannelHandler {
 
     private static final Logger logger = LoggerFactory.getLogger(AlipayPaymentServiceImpl.class);
 
@@ -79,6 +81,16 @@ public class AlipayPaymentServiceImpl implements PaymentService {
                 alipayPublicKey,
                 "RSA2"
         );
+    }
+
+    @Override
+    public String channelCode() {
+        return PaymentMethod.ALIPAY.getCode();
+    }
+
+    @Override
+    public PaymentResponse createChannelPayment(PaymentRequest request) {
+        return createPayment(request);
     }
 
     @Override

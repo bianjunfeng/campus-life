@@ -2,8 +2,10 @@ package com.campus.campus_life_backend.modules.payment.service.impl;
 
 import com.campus.campus_life_backend.common.exception.BusinessErrorCode;
 import com.campus.campus_life_backend.common.exception.BusinessException;
+import com.campus.campus_life_backend.modules.payment.channel.PaymentChannelHandler;
 import com.campus.campus_life_backend.modules.payment.dto.PaymentRequest;
 import com.campus.campus_life_backend.modules.payment.dto.PaymentResponse;
+import com.campus.campus_life_backend.modules.payment.enums.PaymentMethod;
 import com.campus.campus_life_backend.modules.payment.service.PaymentCallbackService;
 import com.campus.campus_life_backend.modules.payment.service.PaymentService;
 import org.slf4j.Logger;
@@ -22,7 +24,7 @@ import java.util.Map;
  * 微信支付服务实现
  */
 @Service
-public class WechatPaymentServiceImpl implements PaymentService {
+public class WechatPaymentServiceImpl implements PaymentService, PaymentChannelHandler {
 
     private static final Logger logger = LoggerFactory.getLogger(WechatPaymentServiceImpl.class);
 
@@ -53,6 +55,16 @@ public class WechatPaymentServiceImpl implements PaymentService {
     @Autowired
     public WechatPaymentServiceImpl(PaymentCallbackService paymentCallbackService) {
         this.paymentCallbackService = paymentCallbackService;
+    }
+
+    @Override
+    public String channelCode() {
+        return PaymentMethod.WECHAT.getCode();
+    }
+
+    @Override
+    public PaymentResponse createChannelPayment(PaymentRequest request) {
+        return createPayment(request);
     }
 
     @Override
