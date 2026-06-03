@@ -49,7 +49,9 @@ Campus Life 是一个前后端分离的校园生活服务平台，包含用户�
 | **campus-life-backend** | 主业务后端服务 | Spring Boot、Spring Security、MyBatis、MySQL、Redis、RabbitMQ、Kafka、Elasticsearch | `8080` |
 | **campus-life-ai** | AI 微服务 | Spring Boot、Spring AI、MyBatis、MySQL、Milvus、OpenAI 兼容接口 | `8083` |
 | **campus-life-gateway** | API 网关服务 | Spring Cloud Gateway、Redis RateLimiter、JWT、Micrometer | `8090` |
-| **deploy/demo** | 示例部署配置 | Docker Compose、Nginx、systemd | - |
+| **deploy/docker** | **L1/L2 全栈 Docker 部署** | Docker Compose、Nginx、MySQL、Redis、RabbitMQ | `80`（可改 `HTTP_PORT`） |
+| **deploy/middleware** | 本地开发中间件 | 仅 MySQL、Redis、RabbitMQ | `3307`、`6379`、`5672` |
+| **deploy/demo** | 裸机示例部署 | systemd、Nginx | - |
 | **docs** | 架构与模块设计文档 | Markdown | - |
 | **perf** | 压测脚本和报告 | JMeter、测试结果报告 | - |
 
@@ -201,11 +203,13 @@ powershell -ExecutionPolicy Bypass -File .\restart-local-middleware.ps1 -UseDock
 powershell -ExecutionPolicy Bypass -File .\restart-local-middleware.ps1 -StatusOnly
 ```
 
-也可以使用 Docker Compose 启动示例 Redis 和 RabbitMQ：
+也可以使用 Docker Compose 仅启动本地中间件：
 
 ```powershell
-docker compose -f .\deploy\demo\docker-compose.yml up -d redis rabbitmq
+docker compose -f .\deploy\middleware\docker-compose.yml up -d
 ```
+
+云服务器 **全栈一键部署（L1 演示 / L2 含 Kafka+ES+Milvus）** 见 [`deploy/docker/README.md`](deploy/docker/README.md)。
 
 ### 启动项目服务
 

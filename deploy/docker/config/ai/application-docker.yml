@@ -65,9 +65,6 @@ knowledge:
   vector:
     enabled: ${AI_KNOWLEDGE_VECTOR_ENABLED:false}
     fallback-keyword-search: ${AI_KNOWLEDGE_VECTOR_FALLBACK_KEYWORD_SEARCH:true}
-    uri: ${MILVUS_URI:http://milvus:19530}
-    database-name: ${MILVUS_DATABASE:default}
-    collection-name: ${MILVUS_COLLECTION:campus_life_knowledge_chunks}
 
 ops:
   prometheus:

@@ -609,3 +609,35 @@ create index idx_wallet_tx_order_no
 
 create index idx_wallet_tx_user_time
     on wallet_transaction (user_id, create_time);
+
+create table if not exists admin_operation_log
+(
+    id              bigint unsigned auto_increment
+        primary key,
+    admin_id        bigint unsigned                    not null comment '操作管理员ID',
+    operation_type  varchar(50)                        not null comment '操作类型',
+    target_type     varchar(50)                        not null comment '目标类型',
+    target_id       bigint unsigned                    not null comment '目标ID',
+    action          varchar(50)                        not null comment '操作动作',
+    old_status      tinyint                            null comment '操作前状态',
+    new_status      tinyint                            null comment '操作后状态',
+    reason          varchar(500)                       null comment '操作原因/备注',
+    ip_address      varchar(50)                        null comment '操作IP地址',
+    create_time     datetime default CURRENT_TIMESTAMP not null,
+    constraint fk_admin_operation_log_admin
+        foreign key (admin_id) references user (id)
+            on delete cascade
+)
+    comment '管理员操作日志表' charset = utf8mb4;
+
+create index idx_admin_operation_log_admin_id
+    on admin_operation_log (admin_id);
+
+create index idx_admin_operation_log_target
+    on admin_operation_log (target_type, target_id);
+
+create index idx_admin_operation_log_operation_type
+    on admin_operation_log (operation_type);
+
+create index idx_admin_operation_log_create_time
+    on admin_operation_log (create_time);

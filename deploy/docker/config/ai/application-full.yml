@@ -1,0 +1,7 @@
+# L2 标准栈：向量检索（需 Milvus healthy）
+knowledge:
+  vector:
+    enabled: true
+    uri: http://milvus:19530
+    database-name: ${MILVUS_DATABASE:default}
+    collection-name: ${MILVUS_COLLECTION:campus_life_knowledge_chunks}

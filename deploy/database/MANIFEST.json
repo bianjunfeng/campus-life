@@ -1,0 +1,18 @@
+{
+  "exportedAt": "2026-06-03T00:00:00Z",
+  "source": {
+    "container": "campus-life-mysql",
+    "mainDatabase": "campus_life",
+    "aiDatabase": "campus_life_ai"
+  },
+  "campus_life": {
+    "tables": 37,
+    "schemaFile": "campus_life/schema.sql",
+    "fullFile": "campus_life/full.sql"
+  },
+  "campus_life_ai": {
+    "tables": 13,
+    "schemaFile": "campus_life_ai/schema.sql",
+    "fullFile": "campus_life_ai/full.sql"
+  }
+}
