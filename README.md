@@ -31,6 +31,18 @@ Campus Life 是一个前后端分离的校园生活服务平台，包含用户�
 
 平台围绕校园内容社区和本地生活业务展开，提供内容发布、评论互动、优惠券领取、订单支付、退款处理、消息通知、后台审核、AI 对话和知识库问答等能力。
 
+### 项目展示
+
+| 展示图 | 展示图 |
+| --- | --- |
+| ![项目展示 1](docs/images/img/image-20260603124236701.png) | ![项目展示 2](docs/images/img/image-20260603124252686.png) |
+| ![项目展示 3](docs/images/img/image-20260603124305056.png) | ![项目展示 4](docs/images/img/image-20260603124322213.png) |
+| ![项目展示 5](docs/images/img/image-20260603124332579.png) | ![项目展示 6](docs/images/img/image-20260603124351626.png) |
+| ![项目展示 7](docs/images/img/image-20260603124402257.png) | ![项目展示 8](docs/images/img/image-20260603124421255.png) |
+| ![项目展示 9](docs/images/img/image-20260603124502304.png) | ![项目展示 10](docs/images/img/image-20260603124541195.png) |
+| ![项目展示 11](docs/images/img/image-20260603124613268.png) | ![项目展示 12](docs/images/img/image-20260603124629644.png) |
+| ![项目展示 13](docs/images/img/image-20260603124754084.png) |  |
+
 ### 项目组成
 
 | 模块 | 模块说明 | 技术栈 | 默认端口 |
