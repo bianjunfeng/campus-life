@@ -159,6 +159,124 @@ class PaymentRefundWorkflowServiceTest {
         paymentRefundWorkflowService.merchantApprove("REF-ALI", 50L, new BigDecimal("20.00"), "同意退款");
 
         verify(paymentService).refund("PAY-ALI", new BigDecimal("20.00"), "同意退款");
-        verify(paymentRefundDomainService, never()).processWalletRefund(any(), any());
+        verify(paymentRefundDomainService).markRefundSuccess(processingRefund, voucherOrder);
+    }
+
+    @Test
+    void merchantApprove_walletChannel_callsPaymentServiceRefundOnly() {
+        Merchant merchant = new Merchant();
+        merchant.setId(9L);
+        merchant.setStatus(1);
+
+        PaymentRefundOrder refundOrder = new PaymentRefundOrder();
+        refundOrder.setRefundNo("REF-WAL");
+        refundOrder.setPaymentNo("PAY-WAL");
+        refundOrder.setBizOrderNo("ORDER-WAL");
+        refundOrder.setMerchantId(9L);
+        refundOrder.setUserId(100L);
+        refundOrder.setRefundAmount(new BigDecimal("15.00"));
+        refundOrder.setStatus(PaymentRefundStatus.WAIT_MERCHANT_REVIEW.getCode());
+
+        PaymentRefundOrder processingRefund = new PaymentRefundOrder();
+        processingRefund.setRefundNo("REF-WAL");
+        processingRefund.setPaymentNo("PAY-WAL");
+        processingRefund.setBizOrderNo("ORDER-WAL");
+        processingRefund.setRefundAmount(new BigDecimal("15.00"));
+        processingRefund.setReason("同意退款");
+        processingRefund.setStatus(PaymentRefundStatus.PROCESSING.getCode());
+
+        PaymentOrder paymentOrder = new PaymentOrder();
+        paymentOrder.setPaymentNo("PAY-WAL");
+        paymentOrder.setAmount(new BigDecimal("15.00"));
+        paymentOrder.setChannel("wallet");
+
+        VoucherOrder voucherOrder = new VoucherOrder();
+        voucherOrder.setOrderNo("ORDER-WAL");
+        voucherOrder.setStatus(1);
+        voucherOrder.setUseTime(null);
+
+        PaymentRefundResponse successResponse = new PaymentRefundResponse();
+        successResponse.setRefundNo("REF-WAL");
+        successResponse.setStatus(PaymentRefundStatus.SUCCESS.getCode());
+
+        when(merchantMapper.findByUserId(50L)).thenReturn(merchant);
+        when(paymentRefundOrderMapper.findByRefundNo("REF-WAL")).thenReturn(refundOrder, processingRefund);
+        when(voucherOrderService.findByOrderNo("ORDER-WAL")).thenReturn(voucherOrder);
+        when(paymentOrderMapper.findByPaymentNo("PAY-WAL")).thenReturn(paymentOrder);
+        when(paymentRefundOrderMapper.sumSuccessfulRefundAmountByPaymentNo("PAY-WAL")).thenReturn(BigDecimal.ZERO);
+        when(paymentRefundOrderMapper.markMerchantApproved(
+                eq("REF-WAL"),
+                any(),
+                any(),
+                any(),
+                eq(50L),
+                eq(PaymentRefundStatus.WAIT_MERCHANT_REVIEW.getCode())
+        )).thenReturn(1);
+        when(paymentService.refund("PAY-WAL", new BigDecimal("15.00"), "同意退款")).thenReturn(true);
+        when(paymentRefundDomainService.markRefundSuccess(processingRefund, voucherOrder)).thenReturn(successResponse);
+
+        paymentRefundWorkflowService.merchantApprove("REF-WAL", 50L, new BigDecimal("15.00"), "同意退款");
+
+        verify(paymentService).refund("PAY-WAL", new BigDecimal("15.00"), "同意退款");
+        verify(paymentRefundDomainService).markRefundSuccess(processingRefund, voucherOrder);
+    }
+
+    @Test
+    void merchantApprove_walletChannelRefundFails_marksFailedAndNotifies() {
+        Merchant merchant = new Merchant();
+        merchant.setId(9L);
+        merchant.setStatus(1);
+
+        PaymentRefundOrder refundOrder = new PaymentRefundOrder();
+        refundOrder.setRefundNo("REF-WF");
+        refundOrder.setPaymentNo("PAY-WF");
+        refundOrder.setBizOrderNo("ORDER-WF");
+        refundOrder.setMerchantId(9L);
+        refundOrder.setUserId(100L);
+        refundOrder.setRefundAmount(new BigDecimal("10.00"));
+        refundOrder.setStatus(PaymentRefundStatus.WAIT_MERCHANT_REVIEW.getCode());
+
+        PaymentRefundOrder processingRefund = new PaymentRefundOrder();
+        processingRefund.setRefundNo("REF-WF");
+        processingRefund.setPaymentNo("PAY-WF");
+        processingRefund.setBizOrderNo("ORDER-WF");
+        processingRefund.setRefundAmount(new BigDecimal("10.00"));
+        processingRefund.setReason("同意退款");
+        processingRefund.setStatus(PaymentRefundStatus.PROCESSING.getCode());
+
+        PaymentOrder paymentOrder = new PaymentOrder();
+        paymentOrder.setPaymentNo("PAY-WF");
+        paymentOrder.setAmount(new BigDecimal("10.00"));
+        paymentOrder.setChannel("wallet");
+
+        VoucherOrder voucherOrder = new VoucherOrder();
+        voucherOrder.setOrderNo("ORDER-WF");
+        voucherOrder.setStatus(1);
+        voucherOrder.setUseTime(null);
+
+        PaymentRefundOrder failedRefund = new PaymentRefundOrder();
+        failedRefund.setRefundNo("REF-WF");
+        failedRefund.setStatus(PaymentRefundStatus.FAILED.getCode());
+
+        when(merchantMapper.findByUserId(50L)).thenReturn(merchant);
+        when(paymentRefundOrderMapper.findByRefundNo("REF-WF")).thenReturn(refundOrder, processingRefund, failedRefund);
+        when(voucherOrderService.findByOrderNo("ORDER-WF")).thenReturn(voucherOrder);
+        when(paymentOrderMapper.findByPaymentNo("PAY-WF")).thenReturn(paymentOrder);
+        when(paymentRefundOrderMapper.sumSuccessfulRefundAmountByPaymentNo("PAY-WF")).thenReturn(BigDecimal.ZERO);
+        when(paymentRefundOrderMapper.markMerchantApproved(
+                eq("REF-WF"),
+                any(),
+                any(),
+                any(),
+                eq(50L),
+                eq(PaymentRefundStatus.WAIT_MERCHANT_REVIEW.getCode())
+        )).thenReturn(1);
+        when(paymentService.refund("PAY-WF", new BigDecimal("10.00"), "同意退款")).thenReturn(false);
+
+        paymentRefundWorkflowService.merchantApprove("REF-WF", 50L, new BigDecimal("10.00"), "同意退款");
+
+        verify(paymentService).refund("PAY-WF", new BigDecimal("10.00"), "同意退款");
+        verify(paymentRefundDomainService).markRefundFailed(processingRefund);
+        verify(paymentRefundDomainService, never()).markRefundSuccess(any(), any());
     }
 }

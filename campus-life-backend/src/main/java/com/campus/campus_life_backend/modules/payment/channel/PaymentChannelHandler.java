@@ -1,6 +1,7 @@
 package com.campus.campus_life_backend.modules.payment.channel;
 
 import com.campus.campus_life_backend.modules.order.entity.VoucherOrder;
+import com.campus.campus_life_backend.modules.payment.dto.PaymentCallbackResult;
 import com.campus.campus_life_backend.modules.payment.dto.PaymentRequest;
 import com.campus.campus_life_backend.modules.payment.dto.PaymentResponse;
 import com.campus.campus_life_backend.modules.payment.entity.PaymentOrder;
@@ -8,7 +9,7 @@ import com.campus.campus_life_backend.modules.payment.entity.PaymentOrder;
 import java.math.BigDecimal;
 
 /**
- * 支付渠道能力（与 {@link com.campus.campus_life_backend.modules.payment.service.PaymentService} 渠道侧对齐）。
+ * 支付渠道能力；对外统一入口见 {@link com.campus.campus_life_backend.modules.payment.service.PaymentService}。
  */
 public interface PaymentChannelHandler {
 
@@ -35,7 +36,7 @@ public interface PaymentChannelHandler {
 
     PaymentResponse createChannelPayment(PaymentRequest request);
 
-    boolean handlePaymentCallback(String paymentMethod, String callbackData);
+    PaymentCallbackResult handlePaymentCallback(String paymentMethod, String callbackData);
 
     String queryPaymentStatus(String orderNo);
 

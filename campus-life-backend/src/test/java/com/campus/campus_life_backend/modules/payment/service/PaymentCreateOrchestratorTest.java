@@ -10,7 +10,6 @@ import com.campus.campus_life_backend.modules.payment.dto.PaymentRequest;
 import com.campus.campus_life_backend.modules.payment.dto.PaymentResponse;
 import com.campus.campus_life_backend.modules.payment.entity.PaymentOrder;
 import com.campus.campus_life_backend.modules.payment.enums.PaymentMethod;
-import com.campus.campus_life_backend.modules.payment.service.impl.AlipayPaymentServiceImpl;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
@@ -39,7 +38,10 @@ class PaymentCreateOrchestratorTest {
     private WalletChannelHandler walletChannelHandler;
 
     @Mock
-    private AlipayPaymentServiceImpl alipayChannelHandler;
+    private PaymentChannelHandler alipayChannelHandler;
+
+    @Mock
+    private PaymentChannelHandler wechatChannelHandler;
 
     @InjectMocks
     private PaymentCreateOrchestrator paymentCreateOrchestrator;
@@ -110,6 +112,31 @@ class PaymentCreateOrchestratorTest {
 
         assertEquals("PAY-3", response.getPaymentOrderNo());
         verify(alipayChannelHandler).createChannelPayment(any(PaymentRequest.class));
+        verify(paymentOrderDomainService).markWaitingForPay(paymentOrder);
+    }
+
+    @Test
+    void create_wechat_externalChannel_createsChannelPaymentAndMarksWaiting() {
+        VoucherOrder order = voucherOrder("ORD-4");
+        PaymentRequest request = paymentRequest("wechat");
+        request.setAmount(new BigDecimal("29.90"));
+        PaymentOrder paymentOrder = paymentOrder("PAY-4", "INIT");
+
+        when(channelRegistry.require("wechat")).thenReturn(wechatChannelHandler);
+        when(wechatChannelHandler.isExternalChannel()).thenReturn(true);
+        when(paymentOrderDomainService.createVoucherPaymentOrder(
+                order, 1L, "wechat", "优惠券订单", "优惠券购买", "key-4"
+        )).thenReturn(paymentOrder);
+
+        PaymentResponse channelResponse = new PaymentResponse();
+        channelResponse.setPaymentMethod("wechat");
+        channelResponse.setPayUrl("weixin://wxpay/bizpayurl?pr=mock");
+        when(wechatChannelHandler.createChannelPayment(any(PaymentRequest.class))).thenReturn(channelResponse);
+
+        PaymentResponse response = paymentCreateOrchestrator.create(order, 1L, request, "key-4");
+
+        assertEquals("PAY-4", response.getPaymentOrderNo());
+        verify(wechatChannelHandler).createChannelPayment(any(PaymentRequest.class));
         verify(paymentOrderDomainService).markWaitingForPay(paymentOrder);
     }
 

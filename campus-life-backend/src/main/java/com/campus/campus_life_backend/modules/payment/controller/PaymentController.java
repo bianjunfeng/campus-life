@@ -1,13 +1,12 @@
 package com.campus.campus_life_backend.modules.payment.controller;
 
-import com.alipay.api.AlipayApiException;
-import com.alipay.api.internal.util.AlipaySignature;
 import com.campus.campus_life_backend.common.exception.BusinessErrorCode;
 import com.campus.campus_life_backend.common.exception.BusinessException;
 import com.campus.campus_life_backend.common.result.ApiResponse;
 import com.campus.campus_life_backend.common.security.annotation.RequireLogin;
 import com.campus.campus_life_backend.common.security.support.CurrentUserAccessor;
 import com.campus.campus_life_backend.modules.order.service.OrderFacadeService;
+import com.campus.campus_life_backend.modules.payment.dto.PaymentCallbackResult;
 import com.campus.campus_life_backend.modules.payment.dto.PaymentRequest;
 import com.campus.campus_life_backend.modules.payment.dto.PaymentRefundRequest;
 import com.campus.campus_life_backend.modules.payment.dto.PaymentRefundResponse;
@@ -50,15 +49,6 @@ public class PaymentController {
     private final PaymentOrderDomainService paymentOrderDomainService;
     private final PaymentRefundWorkflowService paymentRefundWorkflowService;
     private final OrderFacadeService orderFacadeService;
-
-    @Value("${payment.alipay.public-key:}")
-    private String alipayPublicKey;
-
-    @Value("${payment.alipay.charset:UTF-8}")
-    private String alipayCharset;
-
-    @Value("${payment.alipay.skip-notify-sign-verify:false}")
-    private boolean skipAlipayNotifySignVerify;
 
     @Value("${payment.frontend-base-url:http://localhost:5173}")
     private String frontendBaseUrl;
@@ -282,28 +272,17 @@ public class PaymentController {
         String callbackData = buildCallbackData(params);
 
         try {
-            if (!verifyAlipaySignature(params)) {
-                logger.warn("支付宝回调签名校验失败");
-                saveAlipayCallbackLog(paymentNo, bizOrderNo, callbackData, false, false, "FAILED", "SIGNATURE_INVALID");
-                return "fail";
-            }
-            if (!verifyAlipayOrderAmount(params)) {
-                logger.warn("支付宝回调金额校验失败");
-                saveAlipayCallbackLog(paymentNo, bizOrderNo, callbackData, true, false, "FAILED", "AMOUNT_MISMATCH");
-                return "fail";
-            }
-
-            boolean success = paymentService.handlePaymentCallback("alipay", callbackData);
+            PaymentCallbackResult result = paymentService.handlePaymentCallback("alipay", callbackData);
             saveAlipayCallbackLog(
                     paymentNo,
                     bizOrderNo,
                     callbackData,
-                    true,
-                    true,
-                    success ? "PROCESSED" : "FAILED",
-                    success ? null : "PROCESS_CALLBACK_FAILED"
+                    result.isSignatureVerified(),
+                    result.isAmountVerified(),
+                    result.isSuccess() ? "PROCESSED" : "FAILED",
+                    result.getErrorCode()
             );
-            return success ? "success" : "fail";
+            return result.isSuccess() ? "success" : "fail";
         } catch (Exception e) {
             logger.error("处理支付宝回调失败", e);
             saveAlipayCallbackLog(paymentNo, bizOrderNo, callbackData, true, true, "FAILED", e.getMessage());
@@ -329,65 +308,11 @@ public class PaymentController {
         logger.info("收到微信支付回调: {}", body);
 
         try {
-            boolean success = paymentService.handlePaymentCallback("wechat", body);
-            return success ? "success" : "fail";
+            PaymentCallbackResult result = paymentService.handlePaymentCallback("wechat", body);
+            return result.isSuccess() ? "success" : "fail";
         } catch (Exception e) {
             logger.error("处理微信支付回调失败", e);
             return "fail";
-        }
-    }
-
-    private boolean verifyAlipaySignature(Map<String, String> params) throws AlipayApiException {
-        if (skipAlipayNotifySignVerify) {
-            logger.warn("已启用支付宝回调跳过验签（仅开发/沙箱环境）");
-            return true;
-        }
-        if (alipayPublicKey == null || alipayPublicKey.isBlank()) {
-            logger.error("支付宝公钥未配置，拒绝处理回调");
-            return false;
-        }
-        String signType = params.getOrDefault("sign_type", "RSA2");
-        return AlipaySignature.rsaCheckV1(params, alipayPublicKey, alipayCharset, signType);
-    }
-
-    private boolean verifyAlipayOrderAmount(Map<String, String> params) {
-        String paymentNo = params.get("out_trade_no");
-        String totalAmount = params.get("total_amount");
-        if (paymentNo == null || paymentNo.isBlank() || totalAmount == null || totalAmount.isBlank()) {
-            logger.warn("支付宝回调缺少支付单号或金额: paymentNo={}, totalAmount={}", paymentNo, totalAmount);
-            return false;
-        }
-
-        BigDecimal expectedAmount = normalizeAmount(paymentOrderDomainService.getExpectedAmountByPaymentNo(paymentNo));
-        if (expectedAmount == null) {
-            logger.warn("支付宝回调对应支付单不存在: paymentNo={}", paymentNo);
-            return false;
-        }
-
-        BigDecimal paidAmount = parseAmount(totalAmount);
-        if (paidAmount == null) {
-            logger.warn("支付宝回调金额格式非法: paymentNo={}, expectedAmount={}, paidAmount={}",
-                    paymentNo, expectedAmount, totalAmount);
-            return false;
-        }
-
-        boolean matched = expectedAmount.compareTo(paidAmount) == 0;
-        if (!matched) {
-            logger.warn("支付宝回调金额不匹配: paymentNo={}, expectedAmount={}, paidAmount={}",
-                    paymentNo, expectedAmount, paidAmount);
-        }
-        return matched;
-    }
-
-    private BigDecimal normalizeAmount(BigDecimal amount) {
-        return amount == null ? null : amount.stripTrailingZeros();
-    }
-
-    private BigDecimal parseAmount(String amountText) {
-        try {
-            return new BigDecimal(amountText).stripTrailingZeros();
-        } catch (Exception e) {
-            return null;
         }
     }
 
@@ -400,6 +325,10 @@ public class PaymentController {
             callbackData.append(key).append("=").append(value);
         });
         return callbackData.toString();
+    }
+
+    private BigDecimal normalizeAmount(BigDecimal amount) {
+        return amount == null ? null : amount.stripTrailingZeros();
     }
 
     private void saveAlipayCallbackLog(

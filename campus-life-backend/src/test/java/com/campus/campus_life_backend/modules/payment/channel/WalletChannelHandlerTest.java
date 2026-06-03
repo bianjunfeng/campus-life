@@ -127,11 +127,81 @@ class WalletChannelHandlerTest {
     }
 
     @Test
+    void refund_walletCreditFails_returnsFalse() {
+        PaymentOrder paymentOrder = new PaymentOrder();
+        paymentOrder.setPaymentNo("PAY-W4");
+        paymentOrder.setUserId(4L);
+        paymentOrder.setBizOrderNo("ORD-W4");
+
+        when(paymentOrderDomainService.findByPaymentNo("PAY-W4")).thenReturn(paymentOrder);
+        when(userWalletMapper.addBalanceAndReduceSpent(4L, new BigDecimal("3.00"))).thenReturn(0);
+
+        assertFalse(walletChannelHandler.refund("PAY-W4", new BigDecimal("3.00"), "失败场景"));
+
+        verify(userWalletMapper).initWalletIfAbsent(4L, BigDecimal.ZERO);
+        verify(walletTransactionMapper, never()).insertRefundTransaction(any(), any(), any(), any(), any());
+    }
+
+    @Test
+    void refund_blankReason_usesDefaultRemark() {
+        PaymentOrder paymentOrder = new PaymentOrder();
+        paymentOrder.setPaymentNo("PAY-W5");
+        paymentOrder.setUserId(5L);
+        paymentOrder.setBizOrderNo("ORD-W5");
+
+        when(paymentOrderDomainService.findByPaymentNo("PAY-W5")).thenReturn(paymentOrder);
+        when(userWalletMapper.addBalanceAndReduceSpent(5L, BigDecimal.ONE)).thenReturn(1);
+
+        assertTrue(walletChannelHandler.refund("PAY-W5", BigDecimal.ONE, "  "));
+
+        verify(walletTransactionMapper).insertRefundTransaction(
+                eq(5L),
+                eq(BigDecimal.ONE),
+                any(),
+                eq("ORD-W5"),
+                eq("钱包退款")
+        );
+    }
+
+    @Test
     void createChannelPayment_rejectsDirectChannelCall() {
         IllegalArgumentException ex = assertThrows(
                 IllegalArgumentException.class,
                 () -> walletChannelHandler.createChannelPayment(new PaymentRequest())
         );
         assertEquals("钱包支付请通过统一支付入口处理", ex.getMessage());
+    }
+
+    @Test
+    void queryPaymentStatus_mapsLocalPaymentOrderStatus() {
+        PaymentOrder success = new PaymentOrder();
+        success.setPaymentNo("PAY-W6");
+        success.setStatus("SUCCESS");
+
+        PaymentOrder waitPay = new PaymentOrder();
+        waitPay.setPaymentNo("PAY-W7");
+        waitPay.setStatus("WAIT_PAY");
+
+        PaymentOrder failed = new PaymentOrder();
+        failed.setPaymentNo("PAY-W8");
+        failed.setStatus("CLOSED");
+
+        when(paymentOrderDomainService.findByPaymentNo("PAY-W6")).thenReturn(success);
+        when(paymentOrderDomainService.findByPaymentNo("PAY-W7")).thenReturn(waitPay);
+        when(paymentOrderDomainService.findByPaymentNo("PAY-W8")).thenReturn(failed);
+        when(paymentOrderDomainService.findByPaymentNo("PAY-MISS")).thenReturn(null);
+
+        assertEquals("SUCCESS", walletChannelHandler.queryPaymentStatus("PAY-W6"));
+        assertEquals("PENDING", walletChannelHandler.queryPaymentStatus("PAY-W7"));
+        assertEquals("FAILED", walletChannelHandler.queryPaymentStatus("PAY-W8"));
+        assertEquals("UNKNOWN", walletChannelHandler.queryPaymentStatus("PAY-MISS"));
+    }
+
+    @Test
+    void mapLocalPaymentStatus_matrix() {
+        assertEquals("SUCCESS", WalletChannelHandler.mapLocalPaymentStatus("FULL_REFUNDED"));
+        assertEquals("FAILED", WalletChannelHandler.mapLocalPaymentStatus("FAILED"));
+        assertEquals("PENDING", WalletChannelHandler.mapLocalPaymentStatus("INIT"));
+        assertEquals("PENDING", WalletChannelHandler.mapLocalPaymentStatus(null));
     }
 }

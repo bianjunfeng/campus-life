@@ -5,6 +5,7 @@ import com.campus.campus_life_backend.common.exception.BusinessException;
 import com.campus.campus_life_backend.common.result.ApiResponse;
 import com.campus.campus_life_backend.common.security.support.CurrentUserAccessor;
 import com.campus.campus_life_backend.modules.order.service.OrderFacadeService;
+import com.campus.campus_life_backend.modules.payment.dto.PaymentCallbackResult;
 import com.campus.campus_life_backend.modules.payment.dto.PaymentRequest;
 import com.campus.campus_life_backend.modules.payment.dto.PaymentResponse;
 import com.campus.campus_life_backend.modules.payment.service.PaymentCreateOrchestrator;
@@ -20,7 +21,6 @@ import org.mockito.ArgumentCaptor;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
-import org.springframework.test.util.ReflectionTestUtils;
 
 import java.math.BigDecimal;
 import java.util.HashMap;
@@ -187,17 +187,28 @@ class PaymentControllerTest {
 
     @Test
     void shouldRejectAlipayNotifyWhenPaidAmountDoesNotMatchOrder() {
-        ReflectionTestUtils.setField(paymentController, "skipAlipayNotifySignVerify", true);
-
-        when(paymentOrderDomainService.getExpectedAmountByPaymentNo("ORD-2001")).thenReturn(new BigDecimal("88.00"));
-
         Map<String, String> params = new HashMap<>();
         params.put("out_trade_no", "ORD-2001");
         params.put("total_amount", "8.80");
 
+        when(paymentOrderDomainService.getBizOrderNoByPaymentNo("ORD-2001")).thenReturn("BIZ-2001");
+        when(paymentService.handlePaymentCallback(eq("alipay"), anyString()))
+                .thenReturn(PaymentCallbackResult.amountMismatch());
+
         String result = paymentController.alipayNotify(params);
 
         assertEquals("fail", result);
-        verify(paymentService, never()).handlePaymentCallback(anyString(), anyString());
+        verify(paymentService).handlePaymentCallback(eq("alipay"), anyString());
+        verify(paymentOrderDomainService).saveCallbackLog(
+                eq("alipay"),
+                eq("PAY_NOTIFY"),
+                eq("ORD-2001"),
+                eq("BIZ-2001"),
+                anyString(),
+                eq(true),
+                eq(false),
+                eq("FAILED"),
+                eq("AMOUNT_MISMATCH")
+        );
     }
 }

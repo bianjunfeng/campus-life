@@ -2,6 +2,7 @@ package com.campus.campus_life_backend.modules.payment.service.impl;
 
 import com.campus.campus_life_backend.modules.payment.channel.PaymentChannelHandler;
 import com.campus.campus_life_backend.modules.payment.channel.PaymentChannelRegistry;
+import com.campus.campus_life_backend.modules.payment.dto.PaymentCallbackResult;
 import com.campus.campus_life_backend.modules.payment.dto.PaymentRequest;
 import com.campus.campus_life_backend.modules.payment.dto.PaymentResponse;
 import com.campus.campus_life_backend.modules.payment.entity.PaymentOrder;
@@ -36,18 +37,12 @@ public class PaymentServiceImpl implements PaymentService {
     @Override
     public PaymentResponse createPayment(PaymentRequest request) {
         PaymentMethod method = PaymentMethod.fromCode(request.getPaymentMethod());
-        if (method == PaymentMethod.WALLET) {
-            throw new IllegalArgumentException("钱包支付请通过统一支付入口处理");
-        }
         return channelRegistry.require(method.getCode()).createChannelPayment(request);
     }
 
     @Override
-    public boolean handlePaymentCallback(String paymentMethod, String callbackData) {
+    public PaymentCallbackResult handlePaymentCallback(String paymentMethod, String callbackData) {
         PaymentMethod method = PaymentMethod.fromCode(paymentMethod);
-        if (method == PaymentMethod.WALLET) {
-            return true;
-        }
         return channelRegistry.require(method.getCode())
                 .handlePaymentCallback(paymentMethod, callbackData);
     }

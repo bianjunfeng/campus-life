@@ -1,6 +1,7 @@
 package com.campus.campus_life_backend.modules.payment.channel;
 
 import com.campus.campus_life_backend.modules.order.entity.VoucherOrder;
+import com.campus.campus_life_backend.modules.payment.dto.PaymentCallbackResult;
 import com.campus.campus_life_backend.modules.payment.dto.PaymentRequest;
 import com.campus.campus_life_backend.modules.payment.dto.PaymentResponse;
 import com.campus.campus_life_backend.modules.payment.entity.PaymentOrder;
@@ -13,6 +14,20 @@ import org.springframework.stereotype.Component;
 
 import java.math.BigDecimal;
 
+/**
+ * 钱包内部支付渠道。
+ *
+ * <p>能力矩阵：
+ * <pre>
+ * | 能力                 | 行为                                      |
+ * |----------------------|-------------------------------------------|
+ * | paySynchronously     | 同步扣款（编排器调用）                    |
+ * | createChannelPayment | 拒绝直连                                  |
+ * | handlePaymentCallback| 无外部回调，恒 true                       |
+ * | queryPaymentStatus   | 按本地 PaymentOrder 状态映射              |
+ * | refund               | 退回钱包余额                              |
+ * </pre>
+ */
 @Component
 public class WalletChannelHandler implements PaymentChannelHandler {
 
@@ -63,13 +78,33 @@ public class WalletChannelHandler implements PaymentChannelHandler {
     }
 
     @Override
-    public boolean handlePaymentCallback(String paymentMethod, String callbackData) {
-        return true;
+    public PaymentCallbackResult handlePaymentCallback(String paymentMethod, String callbackData) {
+        return PaymentCallbackResult.processed();
     }
 
     @Override
     public String queryPaymentStatus(String orderNo) {
-        return "UNKNOWN";
+        PaymentOrder paymentOrder = paymentOrderDomainService.findByPaymentNo(orderNo);
+        if (paymentOrder == null) {
+            return "UNKNOWN";
+        }
+        return mapLocalPaymentStatus(paymentOrder.getStatus());
+    }
+
+    static String mapLocalPaymentStatus(String paymentOrderStatus) {
+        if (paymentOrderStatus == null || paymentOrderStatus.isBlank()) {
+            return "PENDING";
+        }
+        String status = paymentOrderStatus.toUpperCase();
+        if ("SUCCESS".equals(status)
+                || "PARTIAL_REFUNDED".equals(status)
+                || "FULL_REFUNDED".equals(status)) {
+            return "SUCCESS";
+        }
+        if ("FAILED".equals(status) || "CLOSED".equals(status)) {
+            return "FAILED";
+        }
+        return "PENDING";
     }
 
     @Override
