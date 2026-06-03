@@ -7,8 +7,7 @@ import com.campus.campus_life_backend.common.security.support.CurrentUserAccesso
 import com.campus.campus_life_backend.modules.order.service.OrderFacadeService;
 import com.campus.campus_life_backend.modules.payment.dto.PaymentRequest;
 import com.campus.campus_life_backend.modules.payment.dto.PaymentResponse;
-import com.campus.campus_life_backend.modules.payment.entity.PaymentOrder;
-import com.campus.campus_life_backend.modules.payment.service.PaymentCallbackService;
+import com.campus.campus_life_backend.modules.payment.service.PaymentCreateOrchestrator;
 import com.campus.campus_life_backend.modules.payment.service.PaymentIdempotencyService;
 import com.campus.campus_life_backend.modules.payment.service.PaymentIdempotencyService.IdempotencyLock;
 import com.campus.campus_life_backend.modules.payment.service.PaymentOrderDomainService;
@@ -33,6 +32,7 @@ import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -44,7 +44,7 @@ class PaymentControllerTest {
     private PaymentService paymentService;
 
     @Mock
-    private PaymentCallbackService paymentCallbackService;
+    private PaymentCreateOrchestrator paymentCreateOrchestrator;
 
     @Mock
     private PaymentIdempotencyService paymentIdempotencyService;
@@ -82,12 +82,6 @@ class PaymentControllerTest {
         paymentResponse.setPaymentMethod("alipay");
         paymentResponse.setPaymentOrderNo("PAY-1001");
 
-        PaymentOrder paymentOrder = new PaymentOrder();
-        paymentOrder.setId(1L);
-        paymentOrder.setPaymentNo("PAY-1001");
-        paymentOrder.setStatus("INIT");
-        paymentOrder.setVersion(0);
-
         when(currentUserAccessor.requireUserId()).thenReturn(1L);
         when(orderFacadeService.findOwnedOrderByOrderNo("ORD-1001", 1L)).thenReturn(order);
         when(orderFacadeService.buildPaymentOrderInfo(order)).thenReturn(Map.of(
@@ -98,19 +92,60 @@ class PaymentControllerTest {
         when(paymentIdempotencyService.resolveCreateKey(null, "ORD-1001", 1L, "alipay")).thenReturn("create-key");
         when(paymentIdempotencyService.tryAcquireCreate("create-key", PaymentIdempotencyService.CREATE_PROCESSING_TTL))
                 .thenReturn(Optional.of(createLock));
-        when(paymentOrderDomainService.createVoucherPaymentOrder(order, 1L, "alipay", "优惠券订单", "优惠券购买", "create-key"))
-                .thenReturn(paymentOrder);
-        when(paymentService.createPayment(any(PaymentRequest.class))).thenReturn(paymentResponse);
+        when(paymentCreateOrchestrator.create(eq(order), eq(1L), any(PaymentRequest.class), eq("create-key")))
+                .thenReturn(paymentResponse);
 
         ApiResponse<PaymentResponse> response = paymentController.createPayment(null, request);
 
         ArgumentCaptor<PaymentRequest> requestCaptor = ArgumentCaptor.forClass(PaymentRequest.class);
-        verify(paymentService).createPayment(requestCaptor.capture());
+        verify(paymentCreateOrchestrator).create(eq(order), eq(1L), requestCaptor.capture(), eq("create-key"));
         assertEquals(200, response.getCode());
         assertNotNull(response.getData());
         assertEquals(0, new BigDecimal("99.00").compareTo(requestCaptor.getValue().getAmount()));
+        assertEquals("PAY-1001", response.getData().getPaymentOrderNo());
         verify(paymentIdempotencyService).completeCreate(createLock);
         verify(paymentIdempotencyService, never()).releaseCreate(createLock);
+        verify(paymentService, never()).createPayment(any());
+    }
+
+    @Test
+    void shouldCreateWalletPaymentViaOrchestrator() {
+        PaymentRequest request = new PaymentRequest();
+        request.setOrderNo("ORD-W100");
+        request.setPaymentMethod("wallet");
+
+        VoucherOrder order = new VoucherOrder();
+        order.setOrderNo("ORD-W100");
+        order.setUserId(1L);
+        order.setStatus(0);
+        order.setPaymentStatus(0);
+        order.setPayAmount(new BigDecimal("25.00"));
+
+        PaymentResponse paymentResponse = new PaymentResponse();
+        paymentResponse.setPaymentMethod("wallet");
+        paymentResponse.setPaymentOrderNo("PAY-W100");
+
+        when(currentUserAccessor.requireUserId()).thenReturn(1L);
+        when(orderFacadeService.findOwnedOrderByOrderNo("ORD-W100", 1L)).thenReturn(order);
+        when(orderFacadeService.buildPaymentOrderInfo(order)).thenReturn(Map.of(
+                "subject", "优惠券订单",
+                "description", "优惠券购买"
+        ));
+        IdempotencyLock createLock = new IdempotencyLock("create-key-wallet", "token-w");
+        when(paymentIdempotencyService.resolveCreateKey(null, "ORD-W100", 1L, "wallet")).thenReturn("create-key-wallet");
+        when(paymentIdempotencyService.tryAcquireCreate("create-key-wallet", PaymentIdempotencyService.CREATE_PROCESSING_TTL))
+                .thenReturn(Optional.of(createLock));
+        when(paymentCreateOrchestrator.create(eq(order), eq(1L), any(PaymentRequest.class), eq("create-key-wallet")))
+                .thenReturn(paymentResponse);
+
+        ApiResponse<PaymentResponse> response = paymentController.createPayment(null, request);
+
+        assertEquals(200, response.getCode());
+        assertEquals("wallet", response.getData().getPaymentMethod());
+        assertEquals("PAY-W100", response.getData().getPaymentOrderNo());
+        verify(paymentCreateOrchestrator).create(eq(order), eq(1L), any(PaymentRequest.class), eq("create-key-wallet"));
+        verify(paymentIdempotencyService).completeCreate(createLock);
+        verify(paymentService, never()).createPayment(any());
     }
 
     @Test
@@ -126,12 +161,6 @@ class PaymentControllerTest {
         order.setPaymentStatus(0);
         order.setPayAmount(new BigDecimal("19.90"));
 
-        PaymentOrder paymentOrder = new PaymentOrder();
-        paymentOrder.setId(2L);
-        paymentOrder.setPaymentNo("PAY-1002");
-        paymentOrder.setStatus("INIT");
-        paymentOrder.setVersion(0);
-
         when(currentUserAccessor.requireUserId()).thenReturn(1L);
         when(orderFacadeService.findOwnedOrderByOrderNo("ORD-1002", 1L)).thenReturn(order);
         when(orderFacadeService.buildPaymentOrderInfo(order)).thenReturn(Map.of(
@@ -142,9 +171,8 @@ class PaymentControllerTest {
         when(paymentIdempotencyService.resolveCreateKey(null, "ORD-1002", 1L, "alipay")).thenReturn("create-key");
         when(paymentIdempotencyService.tryAcquireCreate("create-key", PaymentIdempotencyService.CREATE_PROCESSING_TTL))
                 .thenReturn(Optional.of(createLock));
-        when(paymentOrderDomainService.createVoucherPaymentOrder(order, 1L, "alipay", "优惠券订单", "优惠券购买", "create-key"))
-                .thenReturn(paymentOrder);
-        when(paymentService.createPayment(any(PaymentRequest.class))).thenThrow(new RuntimeException("alipay appId invalid"));
+        when(paymentCreateOrchestrator.create(eq(order), eq(1L), any(PaymentRequest.class), eq("create-key")))
+                .thenThrow(new RuntimeException("alipay appId invalid"));
 
         BusinessException exception = assertThrows(
                 BusinessException.class,

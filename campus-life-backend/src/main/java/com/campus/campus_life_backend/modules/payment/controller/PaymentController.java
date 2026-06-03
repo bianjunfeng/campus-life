@@ -13,8 +13,7 @@ import com.campus.campus_life_backend.modules.payment.dto.PaymentRefundRequest;
 import com.campus.campus_life_backend.modules.payment.dto.PaymentRefundResponse;
 import com.campus.campus_life_backend.modules.payment.dto.PaymentResponse;
 import com.campus.campus_life_backend.modules.payment.entity.PaymentOrder;
-import com.campus.campus_life_backend.modules.payment.enums.PaymentMethod;
-import com.campus.campus_life_backend.modules.payment.service.PaymentCallbackService;
+import com.campus.campus_life_backend.modules.payment.service.PaymentCreateOrchestrator;
 import com.campus.campus_life_backend.modules.payment.service.PaymentIdempotencyService;
 import com.campus.campus_life_backend.modules.payment.service.PaymentIdempotencyService.IdempotencyLock;
 import com.campus.campus_life_backend.modules.payment.service.PaymentOrderDomainService;
@@ -46,7 +45,7 @@ public class PaymentController {
 
     private final CurrentUserAccessor currentUserAccessor;
     private final PaymentService paymentService;
-    private final PaymentCallbackService paymentCallbackService;
+    private final PaymentCreateOrchestrator paymentCreateOrchestrator;
     private final PaymentIdempotencyService paymentIdempotencyService;
     private final PaymentOrderDomainService paymentOrderDomainService;
     private final PaymentRefundWorkflowService paymentRefundWorkflowService;
@@ -67,7 +66,7 @@ public class PaymentController {
     public PaymentController(
             CurrentUserAccessor currentUserAccessor,
             PaymentService paymentService,
-            PaymentCallbackService paymentCallbackService,
+            PaymentCreateOrchestrator paymentCreateOrchestrator,
             PaymentIdempotencyService paymentIdempotencyService,
             PaymentOrderDomainService paymentOrderDomainService,
             PaymentRefundWorkflowService paymentRefundWorkflowService,
@@ -75,7 +74,7 @@ public class PaymentController {
     ) {
         this.currentUserAccessor = currentUserAccessor;
         this.paymentService = paymentService;
-        this.paymentCallbackService = paymentCallbackService;
+        this.paymentCreateOrchestrator = paymentCreateOrchestrator;
         this.paymentIdempotencyService = paymentIdempotencyService;
         this.paymentOrderDomainService = paymentOrderDomainService;
         this.paymentRefundWorkflowService = paymentRefundWorkflowService;
@@ -128,39 +127,7 @@ public class PaymentController {
         orderFacadeService.bindPaymentIdempotencyKeyIfPending(order.getId(), createKey);
 
         try {
-            if (PaymentMethod.WALLET.getCode().equals(request.getPaymentMethod())) {
-                PaymentOrder paymentOrder = paymentOrderDomainService.createVoucherPaymentOrder(
-                        order,
-                        userId,
-                        request.getPaymentMethod(),
-                        request.getSubject(),
-                        request.getDescription(),
-                        createKey
-                );
-                paymentCallbackService.payByWallet(order, paymentOrder, userId);
-                PaymentResponse response = new PaymentResponse();
-                response.setPaymentMethod(PaymentMethod.WALLET.getCode());
-                response.setPaymentOrderNo(paymentOrder.getPaymentNo());
-                paymentIdempotencyService.completeCreate(idempotencyLock.get());
-                return ApiResponse.success(response);
-            }
-
-            PaymentOrder paymentOrder = paymentOrderDomainService.createVoucherPaymentOrder(
-                    order,
-                    userId,
-                    request.getPaymentMethod(),
-                    request.getSubject(),
-                    request.getDescription(),
-                    createKey
-            );
-            if ("SUCCESS".equals(paymentOrder.getStatus())) {
-                throw new BusinessException(BusinessErrorCode.PAYMENT_STATUS_CHANGED, "订单已支付");
-            }
-
-            PaymentRequest channelRequest = buildChannelPaymentRequest(request, paymentOrder.getPaymentNo());
-            PaymentResponse response = paymentService.createPayment(channelRequest);
-            paymentOrderDomainService.markWaitingForPay(paymentOrder);
-            response.setPaymentOrderNo(paymentOrder.getPaymentNo());
+            PaymentResponse response = paymentCreateOrchestrator.create(order, userId, request, createKey);
             paymentIdempotencyService.completeCreate(idempotencyLock.get());
             return ApiResponse.success(response);
         } catch (BusinessException e) {
@@ -368,17 +335,6 @@ public class PaymentController {
             logger.error("处理微信支付回调失败", e);
             return "fail";
         }
-    }
-
-    private PaymentRequest buildChannelPaymentRequest(PaymentRequest request, String paymentNo) {
-        PaymentRequest channelRequest = new PaymentRequest();
-        channelRequest.setOrderNo(paymentNo);
-        channelRequest.setPaymentMethod(request.getPaymentMethod());
-        channelRequest.setAmount(request.getAmount());
-        channelRequest.setSubject(request.getSubject());
-        channelRequest.setDescription(request.getDescription());
-        channelRequest.setPassbackParams(request.getPassbackParams());
-        return channelRequest;
     }
 
     private boolean verifyAlipaySignature(Map<String, String> params) throws AlipayApiException {
