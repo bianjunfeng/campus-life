@@ -1,0 +1,60 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="com.campus.campus_life_backend.modules.user.mapper.UserWalletMapper">
+
+    <insert id="initWalletIfAbsent">
+        INSERT INTO `user_wallet` (
+            user_id, balance, frozen_amount, total_recharge, total_spent, status, create_time, update_time
+        ) VALUES (
+            #{userId}, #{initialBalance}, 0, #{initialBalance}, 0, 1, NOW(), NOW()
+        )
+        ON DUPLICATE KEY UPDATE user_id = user_id
+    </insert>
+
+    <select id="findByUserId" resultType="map">
+        SELECT
+            user_id AS userId,
+            balance,
+            frozen_amount AS frozenAmount,
+            total_recharge AS totalRecharge,
+            total_spent AS totalSpent,
+            status,
+            update_time AS updateTime
+        FROM `user_wallet`
+        WHERE user_id = #{userId}
+        LIMIT 1
+    </select>
+
+    <update id="addSpent">
+        UPDATE `user_wallet`
+        SET
+            total_spent = COALESCE(total_spent, 0) + #{amount},
+            update_time = NOW()
+        WHERE user_id = #{userId}
+    </update>
+
+    <update id="deductBalanceAndAddSpent">
+        UPDATE `user_wallet`
+        SET
+            balance = balance - #{amount},
+            total_spent = COALESCE(total_spent, 0) + #{amount},
+            update_time = NOW()
+        WHERE user_id = #{userId}
+          AND status = 1
+          AND balance >= #{amount}
+    </update>
+
+    <update id="addBalanceAndReduceSpent">
+        UPDATE `user_wallet`
+        SET
+            balance = balance + #{amount},
+            total_spent = GREATEST(COALESCE(total_spent, 0) - #{amount}, 0),
+            update_time = NOW()
+        WHERE user_id = #{userId}
+          AND status = 1
+    </update>
+
+</mapper>

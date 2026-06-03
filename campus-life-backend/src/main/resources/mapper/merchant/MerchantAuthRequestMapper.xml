@@ -1,0 +1,49 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="com.campus.campus_life_backend.modules.merchant.mapper.MerchantAuthRequestMapper">
+
+    <resultMap id="MerchantAuthRequestResultMap" type="com.campus.campus_life_backend.modules.merchant.entity.MerchantAuthRequest">
+        <id property="id" column="id"/>
+        <result property="userId" column="user_id"/>
+        <result property="merchantName" column="merchant_name"/>
+        <result property="licenseNo" column="license_no"/>
+        <result property="licenseImg" column="license_img"/>
+        <result property="address" column="address"/>
+        <result property="status" column="status"/>
+        <result property="reason" column="reason"/>
+        <result property="reviewerId" column="reviewer_id"/>
+        <result property="createTime" column="create_time"/>
+        <result property="reviewTime" column="review_time"/>
+    </resultMap>
+
+    <select id="findByUserId" resultMap="MerchantAuthRequestResultMap">
+        SELECT * FROM `merchant_auth_request`
+        WHERE user_id = #{userId}
+        ORDER BY create_time DESC
+        LIMIT 1
+    </select>
+
+    <insert id="insert" parameterType="com.campus.campus_life_backend.modules.merchant.entity.MerchantAuthRequest" useGeneratedKeys="true" keyProperty="id">
+        INSERT INTO `merchant_auth_request`
+        (user_id, merchant_name, license_no, license_img, address, status, create_time)
+        VALUES
+        (#{userId}, #{merchantName}, #{licenseNo}, #{licenseImg}, #{address}, 0, NOW())
+    </insert>
+
+    <update id="update" parameterType="com.campus.campus_life_backend.modules.merchant.entity.MerchantAuthRequest">
+        UPDATE `merchant_auth_request`
+        SET merchant_name = #{merchantName},
+            license_no = #{licenseNo},
+            license_img = #{licenseImg},
+            address = #{address},
+            status = #{status},
+            reason = #{reason},
+            reviewer_id = #{reviewerId},
+            review_time = #{reviewTime}
+        WHERE id = #{id}
+    </update>
+
+</mapper>

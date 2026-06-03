@@ -1,0 +1,84 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="com.campus.campus_life_ai.ai.mapper.AiSceneConfigMapper">
+
+    <resultMap id="AiSceneConfigResultMap" type="com.campus.campus_life_ai.ai.entity.AiSceneConfig">
+        <id property="id" column="id"/>
+        <result property="capabilityCode" column="capability_code"/>
+        <result property="sceneCode" column="scene_code"/>
+        <result property="sceneName" column="scene_name"/>
+        <result property="providerCode" column="provider_code"/>
+        <result property="modelCode" column="model_code"/>
+        <result property="enabled" column="enabled"/>
+        <result property="systemPromptTemplate" column="system_prompt_template"/>
+        <result property="inputSchemaJson" column="input_schema_json"/>
+        <result property="outputSchemaJson" column="output_schema_json"/>
+        <result property="safetyLevel" column="safety_level"/>
+        <result property="timeoutMs" column="timeout_ms"/>
+        <result property="createdAt" column="created_at"/>
+        <result property="updatedAt" column="updated_at"/>
+    </resultMap>
+
+    <select id="findAll" resultMap="AiSceneConfigResultMap">
+        SELECT * FROM ai_scene_config
+        ORDER BY updated_at DESC, id DESC
+    </select>
+
+    <select id="findById" resultMap="AiSceneConfigResultMap">
+        SELECT * FROM ai_scene_config WHERE id = #{id} LIMIT 1
+    </select>
+
+    <select id="findBySceneCode" resultMap="AiSceneConfigResultMap">
+        SELECT * FROM ai_scene_config WHERE scene_code = #{sceneCode} LIMIT 1
+    </select>
+
+    <select id="countBySceneCodeExcludingId" resultType="int">
+        SELECT COUNT(1)
+        FROM ai_scene_config
+        WHERE scene_code = #{sceneCode}
+          AND (#{id} IS NULL OR id != #{id})
+    </select>
+
+    <select id="countByCapabilityCode" resultType="int">
+        SELECT COUNT(1) FROM ai_scene_config WHERE capability_code = #{capabilityCode}
+    </select>
+
+    <select id="countByProviderCode" resultType="int">
+        SELECT COUNT(1) FROM ai_scene_config WHERE provider_code = #{providerCode}
+    </select>
+
+    <insert id="insert" parameterType="com.campus.campus_life_ai.ai.entity.AiSceneConfig" useGeneratedKeys="true" keyProperty="id">
+        INSERT INTO ai_scene_config (
+            capability_code, scene_code, scene_name, provider_code, model_code, enabled, system_prompt_template,
+            input_schema_json, output_schema_json, safety_level, timeout_ms, created_at, updated_at
+        ) VALUES (
+            #{capabilityCode}, #{sceneCode}, #{sceneName}, #{providerCode}, #{modelCode}, #{enabled}, #{systemPromptTemplate},
+            #{inputSchemaJson}, #{outputSchemaJson}, #{safetyLevel}, #{timeoutMs}, #{createdAt}, #{updatedAt}
+        )
+    </insert>
+
+    <update id="update" parameterType="com.campus.campus_life_ai.ai.entity.AiSceneConfig">
+        UPDATE ai_scene_config
+        SET capability_code = #{capabilityCode},
+            scene_code = #{sceneCode},
+            scene_name = #{sceneName},
+            provider_code = #{providerCode},
+            model_code = #{modelCode},
+            enabled = #{enabled},
+            system_prompt_template = #{systemPromptTemplate},
+            input_schema_json = #{inputSchemaJson},
+            output_schema_json = #{outputSchemaJson},
+            safety_level = #{safetyLevel},
+            timeout_ms = #{timeoutMs},
+            updated_at = #{updatedAt}
+        WHERE id = #{id}
+    </update>
+
+    <delete id="deleteById">
+        DELETE FROM ai_scene_config WHERE id = #{id}
+    </delete>
+
+</mapper>

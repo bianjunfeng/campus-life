@@ -1,0 +1,189 @@
+server:
+  port: ${SERVER_PORT:8080}
+
+app:
+  cors:
+    # 支持多个来源，逗号分隔；建议填写你的 https 域名
+    allowed-origin-patterns: ${APP_CORS_ALLOWED_ORIGIN_PATTERNS:https://your-domain.com,http://your-server-ip}
+
+spring:
+  datasource:
+    url: ${SPRING_DATASOURCE_URL:jdbc:mysql://127.0.0.1:3306/campus_life?useSSL=false&serverTimezone=Asia/Shanghai&characterEncoding=utf8}
+    username: ${SPRING_DATASOURCE_USERNAME:root}
+    password: ${SPRING_DATASOURCE_PASSWORD:}
+    driver-class-name: com.mysql.cj.jdbc.Driver
+  data:
+    redis:
+      host: ${SPRING_REDIS_HOST:127.0.0.1}
+      port: ${SPRING_REDIS_PORT:6379}
+      password: ${SPRING_REDIS_PASSWORD:}
+      timeout: 3000
+  rabbitmq:
+    host: ${SPRING_RABBITMQ_HOST:127.0.0.1}
+    port: ${SPRING_RABBITMQ_PORT:5672}
+    username: ${SPRING_RABBITMQ_USERNAME:guest}
+    password: ${SPRING_RABBITMQ_PASSWORD:guest}
+    virtual-host: ${SPRING_RABBITMQ_VIRTUAL_HOST:/}
+    connection-timeout: 3000
+  elasticsearch:
+    uris: ${ES_URIS:http://127.0.0.1:9200}
+  kafka:
+    bootstrap-servers: ${KAFKA_BOOTSTRAP_SERVERS:127.0.0.1:9092}
+    listener:
+      missing-topics-fatal: false
+
+event:
+  reliability:
+    schema-auto-init: ${EVENT_RELIABILITY_SCHEMA_AUTO_INIT:false}
+  monitoring:
+    enabled: ${EVENT_MONITORING_ENABLED:true}
+    initial-delay-ms: ${EVENT_MONITORING_INITIAL_DELAY_MS:15000}
+    fixed-delay-ms: ${EVENT_MONITORING_FIXED_DELAY_MS:30000}
+    kafka-lag:
+      enabled: ${EVENT_MONITORING_KAFKA_LAG_ENABLED:true}
+      timeout-ms: ${EVENT_MONITORING_KAFKA_LAG_TIMEOUT_MS:5000}
+  outbox:
+    enabled: ${EVENT_OUTBOX_ENABLED:true}
+    initial-delay-ms: ${EVENT_OUTBOX_INITIAL_DELAY_MS:10000}
+    fixed-delay-ms: ${EVENT_OUTBOX_FIXED_DELAY_MS:3000}
+    batch-size: ${EVENT_OUTBOX_BATCH_SIZE:200}
+    base-retry-delay-seconds: ${EVENT_OUTBOX_BASE_RETRY_DELAY_SECONDS:5}
+    max-retry-delay-seconds: ${EVENT_OUTBOX_MAX_RETRY_DELAY_SECONDS:300}
+    send-timeout-ms: ${EVENT_OUTBOX_SEND_TIMEOUT_MS:5000}
+    sending-timeout-seconds: ${EVENT_OUTBOX_SENDING_TIMEOUT_SECONDS:120}
+  kafka:
+    topic:
+      partitions: ${EVENT_KAFKA_TOPIC_PARTITIONS:3}
+      replicas: ${EVENT_KAFKA_TOPIC_REPLICAS:3}
+
+management:
+  health:
+    elasticsearch:
+      enabled: ${MANAGEMENT_HEALTH_ELASTICSEARCH_ENABLED:${SEARCH_ES_ENABLED:true}}
+
+jwt:
+  secret: ${JWT_SECRET:please-change-this-secret-in-production}
+  expiration: 1800000
+  refresh-expiration: 2592000000
+
+auth:
+  verification-code:
+    secret: ${AUTH_VERIFICATION_CODE_SECRET:}
+  sms:
+    provider: ${AUTH_SMS_PROVIDER:}
+    http:
+      endpoint: ${AUTH_SMS_HTTP_ENDPOINT:}
+      api-key: ${AUTH_SMS_HTTP_API_KEY:}
+      api-key-header: ${AUTH_SMS_HTTP_API_KEY_HEADER:X-API-Key}
+      sign-name: ${AUTH_SMS_SIGN_NAME:}
+      template-code: ${AUTH_SMS_TEMPLATE_CODE:}
+      connect-timeout-ms: ${AUTH_SMS_HTTP_CONNECT_TIMEOUT_MS:3000}
+      read-timeout-ms: ${AUTH_SMS_HTTP_READ_TIMEOUT_MS:5000}
+
+mybatis:
+  mapper-locations: classpath:mapper/**/*.xml
+  type-aliases-package: com.campus.campus_life_backend.entity
+  configuration:
+    map-underscore-to-camel-case: true
+
+file:
+  storage:
+    type: ${FILE_STORAGE_TYPE:oss}
+  upload:
+    path: uploads
+    url-prefix: /uploads
+  oss:
+    endpoint: ${OSS_ENDPOINT:oss-cn-beijing.aliyuncs.com}
+    access-key-id: ${OSS_ACCESS_KEY_ID:}
+    access-key-secret: ${OSS_ACCESS_KEY_SECRET:}
+    bucket-name: ${OSS_BUCKET_NAME:}
+    url-prefix: ${OSS_URL_PREFIX:}
+
+payment:
+  frontend-base-url: ${PAYMENT_FRONTEND_BASE_URL:}
+  alipay:
+    enabled: ${ALIPAY_ENABLED:false}
+    app-id: ${ALIPAY_APP_ID:}
+    private-key: ${ALIPAY_PRIVATE_KEY:}
+    public-key: ${ALIPAY_PUBLIC_KEY:}
+    skip-notify-sign-verify: ${ALIPAY_SKIP_NOTIFY_SIGN_VERIFY:false}
+    gateway-url: ${ALIPAY_GATEWAY_URL:https://openapi.alipay.com/gateway.do}
+    notify-url: ${ALIPAY_NOTIFY_URL:}
+    return-url: ${ALIPAY_RETURN_URL:}
+  wechat:
+    enabled: ${WECHAT_ENABLED:false}
+    app-id: ${WECHAT_APP_ID:}
+    mch-id: ${WECHAT_MCH_ID:}
+    api-v3-key: ${WECHAT_API_V3_KEY:}
+    private-key-path: ${WECHAT_PRIVATE_KEY_PATH:}
+    certificate-serial-number: ${WECHAT_CERT_SERIAL_NO:}
+    notify-url: ${WECHAT_NOTIFY_URL:https://your-domain.com/api/payment/wechat/notify}
+
+seckill:
+  sentinel:
+    qps: ${SECKILL_SENTINEL_QPS:120}
+  cache:
+    redis-ttl-seconds: 60
+    caffeine-max-size: 500
+    caffeine-expire-seconds: 30
+
+search:
+  kafka:
+    enabled: ${SEARCH_KAFKA_ENABLED:true}
+    topic: ${SEARCH_KAFKA_TOPIC:forum-post-search-sync}
+    group-id: ${SEARCH_KAFKA_GROUP_ID:forum-search-indexer}
+    user-topic: ${SEARCH_USER_KAFKA_TOPIC:forum-user-search-sync}
+    user-group-id: ${SEARCH_USER_KAFKA_GROUP_ID:forum-user-search-indexer}
+    retry:
+      max-attempts: ${SEARCH_KAFKA_RETRY_MAX_ATTEMPTS:3}
+      interval-ms: ${SEARCH_KAFKA_RETRY_INTERVAL_MS:1000}
+    dlt-suffix: ${SEARCH_KAFKA_DLT_SUFFIX:.DLT}
+  es:
+    enabled: ${SEARCH_ES_ENABLED:true}
+  compensation:
+    enabled: ${SEARCH_COMPENSATION_ENABLED:true}
+    initial-delay-ms: ${SEARCH_COMPENSATION_INITIAL_DELAY_MS:15000}
+    fixed-delay-ms: ${SEARCH_COMPENSATION_FIXED_DELAY_MS:300000}
+    batch-size: ${SEARCH_COMPENSATION_BATCH_SIZE:200}
+    overlap-seconds: ${SEARCH_COMPENSATION_OVERLAP_SECONDS:60}
+    initial-lookback-seconds: ${SEARCH_COMPENSATION_INITIAL_LOOKBACK_SECONDS:86400}
+    checkpoint-name: ${SEARCH_COMPENSATION_CHECKPOINT_NAME:search-index-compensation}
+  ops:
+    failure-retention-hours: ${SEARCH_OPS_FAILURE_RETENTION_HOURS:168}
+
+ai:
+  moderation:
+    enabled: ${AI_MODERATION_ENABLED:true}
+    base-url: ${AI_SERVICE_BASE_URL:http://127.0.0.1:8083}
+    fail-open: ${AI_MODERATION_FAIL_OPEN:true}
+    block-review: ${AI_MODERATION_BLOCK_REVIEW:false}
+
+notification:
+  kafka:
+    enabled: ${NOTIFICATION_KAFKA_ENABLED:true}
+    topic: ${NOTIFICATION_KAFKA_TOPIC:system-notification-events}
+    group-id: ${NOTIFICATION_KAFKA_GROUP_ID:system-notification-consumer}
+    retry:
+      max-attempts: ${NOTIFICATION_KAFKA_RETRY_MAX_ATTEMPTS:3}
+      interval-ms: ${NOTIFICATION_KAFKA_RETRY_INTERVAL_MS:1000}
+    dlt-suffix: ${NOTIFICATION_KAFKA_DLT_SUFFIX:.DLT}
+
+voucher:
+  auto-offline-expired:
+    fixed-delay-ms: ${VOUCHER_AUTO_OFFLINE_EXPIRED_FIXED_DELAY_MS:15000}
+    batch-size: ${VOUCHER_AUTO_OFFLINE_EXPIRED_BATCH_SIZE:100}
+  seckill:
+    consumer:
+      enabled: true
+  order:
+    kafka:
+      enabled: ${VOUCHER_ORDER_KAFKA_ENABLED:false}
+      topic: ${VOUCHER_ORDER_KAFKA_TOPIC:voucher-order-events}
+      group-id: ${VOUCHER_ORDER_KAFKA_GROUP_ID:voucher-order-consumer}
+      retry:
+        max-attempts: ${VOUCHER_ORDER_KAFKA_RETRY_MAX_ATTEMPTS:3}
+        interval-ms: ${VOUCHER_ORDER_KAFKA_RETRY_INTERVAL_MS:1000}
+      dlt-suffix: ${VOUCHER_ORDER_KAFKA_DLT_SUFFIX:.DLT}
+    auto-close:
+      fixed-delay-ms: ${VOUCHER_ORDER_AUTO_CLOSE_FIXED_DELAY_MS:15000}
+      batch-size: ${VOUCHER_ORDER_AUTO_CLOSE_BATCH_SIZE:100}

@@ -1,0 +1,172 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="com.campus.campus_life_backend.modules.merchant.mapper.MerchantMapper">
+
+    <resultMap id="MerchantResultMap" type="com.campus.campus_life_backend.modules.merchant.entity.Merchant">
+        <id property="id" column="id"/>
+        <result property="userId" column="user_id"/>
+        <result property="name" column="name"/>
+        <result property="contactName" column="contact_name"/>
+        <result property="contactPhone" column="contact_phone"/>
+        <result property="address" column="address"/>
+        <result property="businessHours" column="business_hours"/>
+        <result property="province" column="province"/>
+        <result property="city" column="city"/>
+        <result property="district" column="district"/>
+        <result property="longitude" column="longitude"/>
+        <result property="latitude" column="latitude"/>
+        <result property="geoHash" column="geo_hash"/>
+        <result property="locationStatus" column="location_status"/>
+        <result property="locationUpdatedTime" column="location_updated_time"/>
+        <result property="typeId" column="type_id"/>
+        <result property="status" column="status"/>
+        <result property="createTime" column="create_time"/>
+        <result property="updateTime" column="update_time"/>
+    </resultMap>
+
+    <insert id="insertMerchant" parameterType="com.campus.campus_life_backend.modules.merchant.entity.Merchant" useGeneratedKeys="true" keyProperty="id">
+        INSERT INTO `merchant` (
+            user_id, name, contact_name, contact_phone, address, business_hours, type_id, status,
+            create_time, update_time
+        ) VALUES (
+            #{userId}, #{name}, #{contactName}, #{contactPhone}, #{address}, #{businessHours},
+            #{typeId}, #{status}, NOW(), NOW()
+        )
+    </insert>
+
+    <select id="findById" resultMap="MerchantResultMap">
+        SELECT * FROM `merchant` WHERE id = #{id}
+    </select>
+
+    <select id="findByUserId" resultMap="MerchantResultMap">
+        SELECT * FROM `merchant` WHERE user_id = #{userId}
+    </select>
+
+    <select id="findByTypeId" resultMap="MerchantResultMap">
+        SELECT * FROM `merchant`
+        WHERE type_id = #{typeId} AND status = 1
+        ORDER BY create_time DESC
+    </select>
+
+    <select id="findAllActive" resultMap="MerchantResultMap">
+        SELECT * FROM `merchant`
+        WHERE status = 1
+        ORDER BY create_time DESC
+    </select>
+
+    <select id="findAllLocatable" resultMap="MerchantResultMap">
+        SELECT * FROM `merchant`
+        WHERE status = 1
+          AND location_status = 1
+          AND longitude IS NOT NULL
+          AND latitude IS NOT NULL
+        ORDER BY location_updated_time DESC, id DESC
+    </select>
+
+    <select id="findAll" resultMap="MerchantResultMap">
+        SELECT * FROM `merchant`
+        ORDER BY create_time DESC
+    </select>
+
+    <update id="updateMerchant" parameterType="com.campus.campus_life_backend.modules.merchant.entity.Merchant">
+        UPDATE `merchant`
+        SET
+            name = #{name},
+            contact_name = #{contactName},
+            contact_phone = #{contactPhone},
+            address = #{address},
+            business_hours = #{businessHours},
+            type_id = #{typeId},
+            update_time = NOW()
+        WHERE id = #{id}
+    </update>
+
+    <update id="updateStatus">
+        UPDATE `merchant` SET status = #{status}, update_time = NOW() WHERE id = #{id}
+    </update>
+
+    <update id="updateLocation">
+        UPDATE `merchant`
+        SET
+            longitude = #{longitude},
+            latitude = #{latitude},
+            province = #{province},
+            city = #{city},
+            district = #{district},
+            address = COALESCE(#{address}, address),
+            geo_hash = #{geoHash},
+            location_status = 1,
+            location_updated_time = NOW(),
+            update_time = NOW()
+        WHERE id = #{id}
+    </update>
+
+    <select id="findNearbyWithDistance" resultType="map">
+        SELECT
+            m.id,
+            m.user_id AS userId,
+            m.name,
+            m.contact_name AS contactName,
+            m.contact_phone AS contactPhone,
+            m.address,
+            m.business_hours AS businessHours,
+            m.province,
+            m.city,
+            m.district,
+            m.type_id AS typeId,
+            m.status,
+            m.longitude,
+            m.latitude,
+            ST_Distance_Sphere(POINT(m.longitude, m.latitude), POINT(#{lng}, #{lat})) AS distanceMeters
+        FROM `merchant` m
+        WHERE m.status = 1
+          AND m.location_status = 1
+          AND m.longitude IS NOT NULL
+          AND m.latitude IS NOT NULL
+          <if test="typeId != null">
+            AND m.type_id = #{typeId}
+          </if>
+          AND ST_Distance_Sphere(POINT(m.longitude, m.latitude), POINT(#{lng}, #{lat})) &lt;= #{radiusMeters}
+        ORDER BY distanceMeters ASC, m.id DESC
+        LIMIT #{offset}, #{size}
+    </select>
+
+    <select id="countNearbyWithDistance" resultType="int">
+        SELECT COUNT(1)
+        FROM `merchant` m
+        WHERE m.status = 1
+          AND m.location_status = 1
+          AND m.longitude IS NOT NULL
+          AND m.latitude IS NOT NULL
+          <if test="typeId != null">
+            AND m.type_id = #{typeId}
+          </if>
+          AND ST_Distance_Sphere(POINT(m.longitude, m.latitude), POINT(#{lng}, #{lat})) &lt;= #{radiusMeters}
+    </select>
+
+    <select id="countAllForAdmin" resultType="long">
+        SELECT COUNT(1) FROM `merchant`
+    </select>
+
+    <select id="countByStatusForAdmin" resultType="long">
+        SELECT COUNT(1) FROM `merchant` WHERE status = #{status}
+    </select>
+
+    <select id="countMerchantsSince" resultType="long">
+        SELECT COUNT(1)
+        FROM `merchant`
+        WHERE create_time &gt;= #{since}
+    </select>
+
+    <select id="countByTypeForAdmin" resultType="map">
+        SELECT COALESCE(mt.name, '其他') AS name, COUNT(1) AS value
+        FROM `merchant` m
+        LEFT JOIN `merchant_type` mt ON m.type_id = mt.id
+        GROUP BY COALESCE(mt.name, '其他')
+        ORDER BY value DESC
+    </select>
+
+</mapper>

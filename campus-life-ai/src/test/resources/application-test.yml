@@ -1,0 +1,26 @@
+spring:
+  datasource:
+    url: jdbc:h2:mem:campus_life_ai_test;MODE=MySQL;DATABASE_TO_UPPER=false;DB_CLOSE_DELAY=-1;NON_KEYWORDS=VALUE
+    username: sa
+    password:
+    driver-class-name: org.h2.Driver
+  sql:
+    init:
+      mode: always
+      schema-locations: classpath:testdb/schema-h2.sql
+      data-locations: classpath:testdb/data-h2.sql
+
+ai:
+  default-provider-code: integration-test
+  default-model-code: integration-default-model
+  openai-compatible:
+    enabled: false
+
+knowledge:
+  storage:
+    root-path: target/test-uploads/knowledge
+    allowed-extensions: txt,md
+  vector:
+    enabled: false
+  embedding:
+    api-key: test-key

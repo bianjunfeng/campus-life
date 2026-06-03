@@ -1,0 +1,120 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.campus.campus_life_backend.modules.forum.mapper.ReportMapper">
+
+    <resultMap id="ReportResultMap" type="com.campus.campus_life_backend.modules.forum.entity.Report">
+        <id property="id" column="id"/>
+        <result property="reporterId" column="reporter_id"/>
+        <result property="targetType" column="target_type"/>
+        <result property="targetId" column="target_id"/>
+        <result property="reason" column="reason"/>
+        <result property="status" column="status"/>
+        <result property="handlerId" column="handler_id"/>
+        <result property="handleResult" column="handle_result"/>
+        <result property="createTime" column="create_time"/>
+        <result property="updateTime" column="update_time"/>
+    </resultMap>
+
+    <insert id="insert" parameterType="com.campus.campus_life_backend.modules.forum.entity.Report" useGeneratedKeys="true" keyProperty="id">
+        INSERT INTO `report` (
+            reporter_id, target_type, target_id, reason, status, create_time, update_time
+        ) VALUES (
+            #{reporterId}, #{targetType}, #{targetId}, #{reason}, #{status}, NOW(), NOW()
+        )
+    </insert>
+
+    <select id="findById" resultMap="ReportResultMap">
+        SELECT *
+        FROM `report`
+        WHERE id = #{id}
+        LIMIT 1
+    </select>
+
+    <select id="findPendingByReporterAndTarget" resultMap="ReportResultMap">
+        SELECT *
+        FROM `report`
+        WHERE reporter_id = #{reporterId}
+          AND target_type = #{targetType}
+          AND target_id = #{targetId}
+          AND status = 0
+        ORDER BY id DESC
+        LIMIT 1
+    </select>
+
+    <update id="processReport">
+        UPDATE `report`
+        SET status = #{status},
+            handler_id = #{handlerId},
+            handle_result = #{handleResult},
+            update_time = NOW()
+        WHERE id = #{id}
+    </update>
+
+    <sql id="AdminReportSelectBase">
+        SELECT
+            r.id,
+            r.reporter_id AS reporterId,
+            COALESCE(u.username, CONCAT('用户#', r.reporter_id)) AS reporterName,
+            r.target_type AS targetType,
+            r.target_id AS targetId,
+            r.reason,
+            r.status,
+            r.handler_id AS handlerId,
+            r.handle_result AS handleResult,
+            r.create_time AS createTime,
+            r.update_time AS updateTime,
+            CASE
+                WHEN r.target_type = 1 THEN COALESCE(p.title, CONCAT('帖子#', r.target_id))
+                WHEN r.target_type = 2 THEN COALESCE(c.content, CONCAT('评论#', r.target_id))
+                ELSE CONCAT('目标#', r.target_id)
+            END AS targetSummary
+        FROM `report` r
+        LEFT JOIN `user` u ON u.id = r.reporter_id
+        LEFT JOIN `post` p ON r.target_type = 1 AND p.id = r.target_id
+        LEFT JOIN `comment` c ON r.target_type = 2 AND c.id = r.target_id
+    </sql>
+
+    <sql id="AdminReportWhere">
+        <where>
+            <if test="status != null">
+                r.status = #{status}
+            </if>
+            <if test="targetType != null">
+                AND r.target_type = #{targetType}
+            </if>
+            <if test="keyword != null and keyword != ''">
+                AND (
+                    r.reason LIKE CONCAT('%', #{keyword}, '%')
+                    OR u.username LIKE CONCAT('%', #{keyword}, '%')
+                    OR p.title LIKE CONCAT('%', #{keyword}, '%')
+                    OR c.content LIKE CONCAT('%', #{keyword}, '%')
+                )
+            </if>
+        </where>
+    </sql>
+
+    <select id="findAdminList" resultType="map">
+        <include refid="AdminReportSelectBase"/>
+        <include refid="AdminReportWhere"/>
+        ORDER BY r.create_time DESC, r.id DESC
+        LIMIT #{offset}, #{limit}
+    </select>
+
+    <select id="countAdminList" resultType="long">
+        SELECT COUNT(1)
+        FROM `report` r
+        LEFT JOIN `user` u ON u.id = r.reporter_id
+        LEFT JOIN `post` p ON r.target_type = 1 AND p.id = r.target_id
+        LEFT JOIN `comment` c ON r.target_type = 2 AND c.id = r.target_id
+        <include refid="AdminReportWhere"/>
+    </select>
+
+    <select id="countByStatus" resultType="long">
+        SELECT COUNT(1)
+        FROM `report`
+        WHERE status = #{status}
+    </select>
+
+</mapper>

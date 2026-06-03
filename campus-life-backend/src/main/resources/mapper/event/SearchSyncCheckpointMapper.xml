@@ -1,0 +1,35 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="com.campus.campus_life_backend.common.event.mapper.SearchSyncCheckpointMapper">
+
+    <select id="findCheckpointMillis" resultType="long">
+        SELECT checkpoint_millis
+        FROM search_sync_checkpoint
+        WHERE checkpoint_name = #{checkpointName}
+        LIMIT 1
+    </select>
+
+    <insert id="upsertSuccess">
+        INSERT INTO search_sync_checkpoint (
+            checkpoint_name, checkpoint_millis, last_success_at, last_error, created_at, updated_at
+        ) VALUES (
+            #{checkpointName}, #{checkpointMillis}, NOW(), NULL, NOW(), NOW()
+        )
+        ON DUPLICATE KEY UPDATE
+            checkpoint_millis = VALUES(checkpoint_millis),
+            last_success_at = NOW(),
+            last_error = NULL,
+            updated_at = NOW()
+    </insert>
+
+    <update id="markFailure">
+        UPDATE search_sync_checkpoint
+        SET last_error = #{lastError},
+            updated_at = NOW()
+        WHERE checkpoint_name = #{checkpointName}
+    </update>
+
+</mapper>

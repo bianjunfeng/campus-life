@@ -1,0 +1,28 @@
+{
+  "name": "campus-life-frontend",
+  "private": true,
+  "version": "0.0.0",
+  "type": "module",
+  "scripts": {
+    "dev": "vite --config vite.consumer.config.js",
+    "dev:admin": "vite --config vite.admin.config.js",
+    "dev:merchant": "vite --config vite.merchant.config.js",
+    "dev:consumer": "vite --config vite.consumer.config.js",
+    "build": "npm run build:consumer && npm run build:merchant && npm run build:admin",
+    "build:admin": "vite build --config vite.admin.config.js",
+    "build:merchant": "vite build --config vite.merchant.config.js",
+    "build:consumer": "vite build --config vite.consumer.config.js",
+    "preview": "vite preview --config vite.consumer.config.js"
+  },
+  "dependencies": {
+    "axios": "^1.13.2",
+    "echarts": "^6.0.0",
+    "vue": "^3.5.12",
+    "vue-echarts": "^8.0.1",
+    "vue-router": "^4.6.3"
+  },
+  "devDependencies": {
+    "@vitejs/plugin-vue": "^5.1.4",
+    "vite": "^5.4.10"
+  }
+}

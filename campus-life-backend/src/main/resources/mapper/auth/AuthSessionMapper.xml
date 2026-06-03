@@ -1,0 +1,157 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.campus.campus_life_backend.modules.auth.mapper.AuthSessionMapper">
+
+    <resultMap id="BaseResultMap" type="com.campus.campus_life_backend.modules.auth.entity.AuthSession">
+        <id column="id" property="id"/>
+        <result column="session_id" property="sessionId"/>
+        <result column="user_id" property="userId"/>
+        <result column="access_jti" property="accessJti"/>
+        <result column="refresh_jti" property="refreshJti"/>
+        <result column="access_token_hash" property="accessTokenHash"/>
+        <result column="refresh_token_hash" property="refreshTokenHash"/>
+        <result column="device" property="device"/>
+        <result column="ip" property="ip"/>
+        <result column="user_agent" property="userAgent"/>
+        <result column="status" property="status"/>
+        <result column="login_time" property="loginTime"/>
+        <result column="last_seen_time" property="lastSeenTime"/>
+        <result column="logout_time" property="logoutTime"/>
+        <result column="expire_at" property="expireAt"/>
+        <result column="create_time" property="createTime"/>
+        <result column="update_time" property="updateTime"/>
+    </resultMap>
+
+    <insert id="upsert" parameterType="com.campus.campus_life_backend.modules.auth.entity.AuthSession"
+            useGeneratedKeys="true" keyProperty="id">
+        INSERT INTO auth_session (
+            session_id, user_id, access_jti, refresh_jti,
+            access_token_hash, refresh_token_hash, device, ip, user_agent,
+            status, login_time, last_seen_time, logout_time, expire_at, create_time, update_time
+        ) VALUES (
+            #{sessionId}, #{userId}, #{accessJti}, #{refreshJti},
+            #{accessTokenHash}, #{refreshTokenHash}, #{device}, #{ip}, #{userAgent},
+            #{status}, #{loginTime}, #{lastSeenTime}, #{logoutTime}, #{expireAt}, NOW(), NOW()
+        )
+        ON DUPLICATE KEY UPDATE
+            user_id = VALUES(user_id),
+            access_jti = VALUES(access_jti),
+            refresh_jti = VALUES(refresh_jti),
+            access_token_hash = VALUES(access_token_hash),
+            refresh_token_hash = VALUES(refresh_token_hash),
+            device = VALUES(device),
+            ip = VALUES(ip),
+            user_agent = VALUES(user_agent),
+            status = VALUES(status),
+            login_time = VALUES(login_time),
+            last_seen_time = VALUES(last_seen_time),
+            logout_time = NULL,
+            expire_at = VALUES(expire_at),
+            update_time = NOW()
+    </insert>
+
+    <update id="updateTokenPairBySessionId">
+        UPDATE auth_session
+        SET access_jti = #{accessJti},
+            refresh_jti = #{refreshJti},
+            access_token_hash = #{accessTokenHash},
+            refresh_token_hash = #{refreshTokenHash},
+            status = 1,
+            last_seen_time = NOW(),
+            logout_time = NULL,
+            expire_at = #{expireAt},
+            update_time = NOW()
+        WHERE session_id = #{sessionId}
+    </update>
+
+    <update id="updateStatusByAccessTokenHash">
+        UPDATE auth_session
+        SET status = #{status},
+            logout_time = NOW(),
+            update_time = NOW()
+        WHERE access_token_hash = #{accessTokenHash}
+          AND status = 1
+    </update>
+
+    <update id="updateStatusBySessionId">
+        UPDATE auth_session
+        SET status = #{status},
+            logout_time = NOW(),
+            update_time = NOW()
+        WHERE session_id = #{sessionId}
+          AND status = 1
+    </update>
+
+    <update id="updateActiveStatusByUserId">
+        UPDATE auth_session
+        SET status = #{status},
+            logout_time = NOW(),
+            update_time = NOW()
+        WHERE user_id = #{userId}
+          AND status = 1
+    </update>
+
+    <update id="updateLastSeenBySessionId">
+        UPDATE auth_session
+        SET last_seen_time = #{lastSeenTime},
+            update_time = NOW()
+        WHERE session_id = #{sessionId}
+          AND status = 1
+    </update>
+
+    <select id="findOnlineUsers" resultType="map">
+        SELECT
+            s.id AS id,
+            s.session_id AS sessionId,
+            s.user_id AS userId,
+            u.username AS username,
+            u.phone AS phone,
+            u.email AS email,
+            u.role AS role,
+            s.device AS device,
+            s.ip AS ip,
+            s.user_agent AS userAgent,
+            s.login_time AS loginTime,
+            s.last_seen_time AS lastSeenTime,
+            s.expire_at AS expireAt,
+            s.status AS status
+        FROM auth_session s
+        LEFT JOIN `user` u ON u.id = s.user_id
+        WHERE s.status = 1
+          AND s.expire_at &gt; NOW()
+        ORDER BY s.last_seen_time DESC, s.login_time DESC, s.id DESC
+        LIMIT #{limit} OFFSET #{offset}
+    </select>
+
+    <select id="countOnlineUsers" resultType="long">
+        SELECT COUNT(1)
+        FROM auth_session
+        WHERE status = 1
+          AND expire_at &gt; NOW()
+    </select>
+
+    <select id="findUserSessions" resultType="map">
+        SELECT
+            session_id AS sessionId,
+            user_id AS userId,
+            device AS device,
+            ip AS ip,
+            user_agent AS userAgent,
+            status AS status,
+            login_time AS loginTime,
+            last_seen_time AS lastSeenTime,
+            expire_at AS expireAt
+        FROM auth_session
+        WHERE user_id = #{userId}
+          AND status = 1
+          AND expire_at &gt; NOW()
+        ORDER BY last_seen_time DESC, login_time DESC, id DESC
+    </select>
+
+    <select id="countBySessionIdAndUserId" resultType="int">
+        SELECT COUNT(1)
+        FROM auth_session
+        WHERE session_id = #{sessionId}
+          AND user_id = #{userId}
+    </select>
+</mapper>

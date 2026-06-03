@@ -1,0 +1,471 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="com.campus.campus_life_backend.modules.order.mapper.VoucherOrderMapper">
+
+    <resultMap id="VoucherOrderResultMap" type="com.campus.campus_life_backend.modules.order.entity.VoucherOrder">
+        <id property="id" column="id"/>
+        <result property="userId" column="user_id"/>
+        <result property="voucherId" column="voucher_id"/>
+        <result property="status" column="status"/>
+        <result property="orderNo" column="order_no"/>
+        <result property="payAmount" column="pay_amount"/>
+        <result property="paymentMethod" column="payment_method"/>
+        <result property="paymentIdempotencyKey" column="payment_idempotency_key"/>
+        <result property="paymentStatus" column="payment_status"/>
+        <result property="orderSource" column="order_source"/>
+        <result property="payDeadline" column="pay_deadline"/>
+        <result property="useDeadline" column="use_deadline"/>
+        <result property="cancelReason" column="cancel_reason"/>
+        <result property="payTime" column="pay_time"/>
+        <result property="createTime" column="create_time"/>
+        <result property="useTime" column="use_time"/>
+        <result property="updateTime" column="update_time"/>
+    </resultMap>
+
+    <insert id="insertVoucherOrder" parameterType="com.campus.campus_life_backend.modules.order.entity.VoucherOrder" useGeneratedKeys="true" keyProperty="id">
+        INSERT INTO `voucher_order` (
+            user_id, voucher_id, status, order_no, pay_amount, payment_method, payment_status, order_source, pay_deadline, use_deadline, create_time
+        ) VALUES (
+            #{userId}, #{voucherId}, #{status}, #{orderNo}, #{payAmount}, #{paymentMethod}, #{paymentStatus}, #{orderSource}, #{payDeadline}, #{useDeadline}, NOW()
+        )
+    </insert>
+
+    <select id="findById" resultMap="VoucherOrderResultMap">
+        SELECT * FROM `voucher_order` WHERE id = #{id}
+    </select>
+
+    <select id="findByOrderNo" resultMap="VoucherOrderResultMap">
+        SELECT * FROM `voucher_order` WHERE order_no = #{orderNo}
+    </select>
+
+    <select id="findByUserId" resultMap="VoucherOrderResultMap">
+        SELECT * FROM `voucher_order`
+        WHERE user_id = #{userId}
+        ORDER BY create_time DESC
+    </select>
+
+    <select id="findByVoucherId" resultMap="VoucherOrderResultMap">
+        SELECT * FROM `voucher_order`
+        WHERE voucher_id = #{voucherId}
+        ORDER BY create_time DESC
+    </select>
+
+    <select id="countByUserAndVoucher" resultType="int">
+        SELECT COUNT(1)
+        FROM `voucher_order`
+        WHERE user_id = #{userId} AND voucher_id = #{voucherId}
+    </select>
+
+    <select id="countActiveByUserAndVoucher" resultType="int">
+        SELECT COUNT(1)
+        FROM `voucher_order`
+        WHERE user_id = #{userId}
+          AND voucher_id = #{voucherId}
+          AND status &lt;&gt; 5
+    </select>
+
+    <select id="sumPaidAmountByUserId" resultType="java.math.BigDecimal">
+        SELECT COALESCE(SUM(pay_amount), 0)
+        FROM `voucher_order`
+        WHERE user_id = #{userId} AND status &gt;= 1
+    </select>
+
+    <select id="countPendingPaymentByUserId" resultType="int">
+        SELECT COUNT(1)
+        FROM `voucher_order`
+        WHERE user_id = #{userId} AND status = 0
+    </select>
+
+    <select id="countAvailableCouponByUserId" resultType="int">
+        SELECT COUNT(1)
+        FROM `voucher_order`
+        WHERE user_id = #{userId} AND status = 1
+    </select>
+
+    <select id="findRecentTransactionsByUserId" resultType="map">
+        SELECT
+            vo.id AS orderId,
+            vo.order_no AS orderNo,
+            vo.pay_amount AS amount,
+            vo.status AS orderStatus,
+            vo.create_time AS createTime,
+            vo.pay_time AS payTime,
+            v.title AS voucherTitle,
+            v.sub_title AS voucherSubTitle,
+            v.image_url AS voucherImage
+        FROM `voucher_order` vo
+        LEFT JOIN `voucher` v ON vo.voucher_id = v.id
+        WHERE vo.user_id = #{userId}
+        ORDER BY vo.create_time DESC
+        LIMIT #{limit}
+    </select>
+
+    <sql id="OrderViewColumns">
+        vo.id AS id,
+        vo.order_no AS orderNo,
+        vo.voucher_id AS voucherId,
+        vo.status AS status,
+        vo.pay_amount AS payAmount,
+        vo.payment_method AS paymentMethod,
+        vo.payment_idempotency_key AS paymentIdempotencyKey,
+        vo.payment_status AS paymentStatus,
+        vo.order_source AS orderSource,
+        vo.pay_deadline AS payDeadline,
+        vo.use_deadline AS useDeadline,
+        vo.cancel_reason AS cancelReason,
+        vo.create_time AS createTime,
+        vo.pay_time AS payTime,
+        vo.use_time AS useTime,
+        v.title AS voucherTitle,
+        v.sub_title AS voucherSubTitle,
+        v.image_url AS voucherImage,
+        m.name AS shopName
+    </sql>
+
+    <select id="findOrderViewsByUserId" resultType="map">
+        SELECT
+        <include refid="OrderViewColumns"/>
+        FROM `voucher_order` vo
+        LEFT JOIN `voucher` v ON vo.voucher_id = v.id
+        LEFT JOIN `merchant` m ON v.merchant_id = m.id
+        WHERE vo.user_id = #{userId}
+        <if test="status != null">
+            AND vo.status = #{status}
+        </if>
+        ORDER BY vo.create_time DESC
+        LIMIT #{offset}, #{size}
+    </select>
+
+    <select id="countOrderViewsByUserId" resultType="int">
+        SELECT COUNT(1)
+        FROM `voucher_order` vo
+        WHERE vo.user_id = #{userId}
+        <if test="status != null">
+            AND vo.status = #{status}
+        </if>
+    </select>
+
+    <select id="findOrderViewByIdAndUserId" resultType="map">
+        SELECT
+        <include refid="OrderViewColumns"/>
+        FROM `voucher_order` vo
+        LEFT JOIN `voucher` v ON vo.voucher_id = v.id
+        LEFT JOIN `merchant` m ON v.merchant_id = m.id
+        WHERE vo.id = #{id} AND vo.user_id = #{userId}
+        LIMIT 1
+    </select>
+
+    <select id="findOrderViewByOrderNoAndUserId" resultType="map">
+        SELECT
+        <include refid="OrderViewColumns"/>
+        FROM `voucher_order` vo
+        LEFT JOIN `voucher` v ON vo.voucher_id = v.id
+        LEFT JOIN `merchant` m ON v.merchant_id = m.id
+        WHERE vo.order_no = #{orderNo} AND vo.user_id = #{userId}
+        LIMIT 1
+    </select>
+
+    <update id="updateVoucherOrder" parameterType="com.campus.campus_life_backend.modules.order.entity.VoucherOrder">
+        UPDATE `voucher_order`
+        SET
+            status = #{status},
+            payment_method = #{paymentMethod},
+            payment_status = #{paymentStatus},
+            pay_time = #{payTime},
+            use_time = #{useTime}
+        WHERE id = #{id}
+    </update>
+
+    <update id="updateStatus">
+        UPDATE `voucher_order` SET status = #{status} WHERE id = #{id}
+    </update>
+
+    <update id="cancelPendingOrderByUserAndId">
+        UPDATE `voucher_order`
+        SET
+            status = 5,
+            payment_status = 2,
+            cancel_reason = #{cancelReason},
+            update_time = NOW()
+        WHERE id = #{id}
+          AND user_id = #{userId}
+          AND status = 0
+    </update>
+
+    <update id="cancelPendingOrderByUserAndIdWithVersion">
+        UPDATE `voucher_order`
+        SET
+            status = 5,
+            payment_status = 2,
+            cancel_reason = #{cancelReason},
+            update_time = NOW()
+        WHERE id = #{id}
+          AND user_id = #{userId}
+          AND status = 0
+          AND update_time = #{expectedUpdateTime}
+    </update>
+
+    <update id="cancelPendingOrderById">
+        UPDATE `voucher_order`
+        SET
+            status = 5,
+            payment_status = 2,
+            cancel_reason = #{cancelReason},
+            update_time = NOW()
+        WHERE id = #{id}
+          AND status = 0
+    </update>
+
+    <update id="cancelPendingOrderByIdWithVersion">
+        UPDATE `voucher_order`
+        SET
+            status = 5,
+            payment_status = 2,
+            cancel_reason = #{cancelReason},
+            update_time = NOW()
+        WHERE id = #{id}
+          AND status = 0
+          AND update_time = #{expectedUpdateTime}
+    </update>
+
+    <select id="findExpiredPendingOrders" resultMap="VoucherOrderResultMap">
+        SELECT *
+        FROM `voucher_order`
+        WHERE status = 0
+          AND pay_deadline IS NOT NULL
+          AND pay_deadline &lt;= NOW()
+        ORDER BY pay_deadline ASC
+        LIMIT #{limit}
+    </select>
+
+    <select id="findExpiredPendingOrdersByUser" resultMap="VoucherOrderResultMap">
+        SELECT *
+        FROM `voucher_order`
+        WHERE user_id = #{userId}
+          AND status = 0
+          AND pay_deadline IS NOT NULL
+          AND pay_deadline &lt;= NOW()
+        ORDER BY pay_deadline ASC
+        LIMIT #{limit}
+    </select>
+
+    <update id="expirePendingOrdersByUser">
+        UPDATE `voucher_order`
+        SET
+            status = 5,
+            payment_status = 2,
+            cancel_reason = '支付超时自动取消',
+            update_time = NOW()
+        WHERE user_id = #{userId}
+          AND status = 0
+          AND pay_deadline IS NOT NULL
+          AND pay_deadline &lt;= NOW()
+    </update>
+
+    <select id="findExpiredPaidOrdersForAutoRefund" resultMap="VoucherOrderResultMap">
+        SELECT *
+        FROM `voucher_order`
+        WHERE status IN (1, 3)
+          AND payment_status = 1
+          AND use_time IS NULL
+          AND use_deadline IS NOT NULL
+          AND use_deadline &lt;= #{now}
+        ORDER BY use_deadline ASC, id ASC
+        LIMIT #{limit}
+    </select>
+
+    <update id="markOrderExpiredWithVersion">
+        UPDATE `voucher_order`
+        SET
+            status = 3,
+            cancel_reason = #{cancelReason},
+            update_time = NOW()
+        WHERE id = #{id}
+          AND status = 1
+          AND payment_status = 1
+          AND use_time IS NULL
+          AND use_deadline IS NOT NULL
+          AND use_deadline &lt;= #{now}
+          AND update_time = #{expectedUpdateTime}
+    </update>
+
+    <update id="markOrderPaidWithVersion">
+        UPDATE `voucher_order`
+        SET
+            status = 1,
+            payment_status = 1,
+            payment_method = #{paymentMethod},
+            pay_time = #{payTime},
+            update_time = NOW()
+        WHERE id = #{id}
+          AND status = 0
+          AND payment_status = 0
+          AND update_time = #{expectedUpdateTime}
+    </update>
+
+    <update id="bindPaymentIdempotencyKeyIfPending">
+        UPDATE `voucher_order`
+        SET payment_idempotency_key = #{idempotencyKey}
+        WHERE id = #{id}
+          AND status = 0
+          AND payment_status = 0
+          AND (payment_idempotency_key IS NULL OR payment_idempotency_key = #{idempotencyKey})
+    </update>
+
+    <update id="markOrderPaymentFailedWithVersion">
+        UPDATE `voucher_order`
+        SET
+            payment_status = 2,
+            update_time = NOW()
+        WHERE id = #{id}
+          AND status = 0
+          AND payment_status = 0
+          AND update_time = #{expectedUpdateTime}
+    </update>
+
+    <update id="markOrderRefundedWithVersion">
+        UPDATE `voucher_order`
+        SET
+            status = 4,
+            payment_status = 3,
+            cancel_reason = #{cancelReason},
+            update_time = NOW()
+        WHERE id = #{id}
+          AND status IN (1, 3)
+          AND payment_status = 1
+          AND update_time = #{expectedUpdateTime}
+    </update>
+
+    <sql id="AdminOrderWhere">
+        <where>
+            <if test="keyword != null and keyword != ''">
+                AND (
+                    vo.order_no LIKE CONCAT('%', #{keyword}, '%')
+                    OR IFNULL(u.username, '') LIKE CONCAT('%', #{keyword}, '%')
+                    OR IFNULL(v.title, '') LIKE CONCAT('%', #{keyword}, '%')
+                )
+            </if>
+            <if test="userId != null">
+                AND vo.user_id = #{userId}
+            </if>
+            <if test="voucherId != null">
+                AND vo.voucher_id = #{voucherId}
+            </if>
+            <if test="status != null">
+                AND vo.status = #{status}
+            </if>
+            <if test="paymentStatus != null">
+                AND vo.payment_status = #{paymentStatus}
+            </if>
+            <if test="orderSource != null and orderSource != ''">
+                AND vo.order_source = #{orderSource}
+            </if>
+            <if test="startTime != null">
+                AND vo.create_time <![CDATA[>=]]> #{startTime}
+            </if>
+            <if test="endTime != null">
+                AND vo.create_time <![CDATA[<=]]> #{endTime}
+            </if>
+        </where>
+    </sql>
+
+    <select id="findAdminOrderViews" resultType="map">
+        SELECT
+            vo.id AS id,
+            vo.order_no AS orderNo,
+            vo.user_id AS userId,
+            u.username AS userName,
+            vo.voucher_id AS voucherId,
+            v.title AS voucherTitle,
+            m.name AS shopName,
+            vo.pay_amount AS payAmount,
+            vo.status AS status,
+            vo.payment_status AS paymentStatus,
+            vo.payment_method AS paymentMethod,
+            vo.order_source AS orderSource,
+            vo.pay_deadline AS payDeadline,
+            vo.use_deadline AS useDeadline,
+            vo.pay_time AS payTime,
+            vo.use_time AS useTime,
+            vo.cancel_reason AS cancelReason,
+            vo.create_time AS createTime
+        FROM `voucher_order` vo
+        LEFT JOIN `user` u ON vo.user_id = u.id
+        LEFT JOIN `voucher` v ON vo.voucher_id = v.id
+        LEFT JOIN `merchant` m ON v.merchant_id = m.id
+        <include refid="AdminOrderWhere"/>
+        ORDER BY vo.create_time DESC
+        LIMIT #{size} OFFSET #{offset}
+    </select>
+
+    <select id="countAdminOrderViews" resultType="int">
+        SELECT COUNT(1)
+        FROM `voucher_order` vo
+        LEFT JOIN `user` u ON vo.user_id = u.id
+        LEFT JOIN `voucher` v ON vo.voucher_id = v.id
+        LEFT JOIN `merchant` m ON v.merchant_id = m.id
+        <include refid="AdminOrderWhere"/>
+    </select>
+
+    <select id="sumAdminOrderStats" resultType="map">
+        SELECT
+            COUNT(1) AS totalOrders,
+            COALESCE(SUM(vo.pay_amount), 0) AS totalAmount,
+            COALESCE(AVG(vo.pay_amount), 0) AS avgOrderAmount,
+            SUM(CASE WHEN vo.status = 2 THEN 1 ELSE 0 END) AS usedOrders,
+            SUM(CASE WHEN vo.status = 0 THEN 1 ELSE 0 END) AS pendingOrders,
+            SUM(CASE WHEN vo.status = 1 THEN 1 ELSE 0 END) AS paidOrders,
+            SUM(CASE WHEN vo.status = 5 THEN 1 ELSE 0 END) AS cancelledOrders,
+            SUM(CASE WHEN vo.order_source = 'seckill' THEN 1 ELSE 0 END) AS seckillOrders
+        FROM `voucher_order` vo
+        LEFT JOIN `user` u ON vo.user_id = u.id
+        LEFT JOIN `voucher` v ON vo.voucher_id = v.id
+        LEFT JOIN `merchant` m ON v.merchant_id = m.id
+        <include refid="AdminOrderWhere"/>
+    </select>
+
+    <select id="findAdminOrderTrend" resultType="map">
+        SELECT
+            DATE(vo.create_time) AS day,
+            COUNT(1) AS orderCount,
+            COALESCE(SUM(vo.pay_amount), 0) AS amount
+        FROM `voucher_order` vo
+        WHERE vo.create_time <![CDATA[>=]]> #{startTime}
+          AND vo.create_time <![CDATA[<=]]> #{endTime}
+        GROUP BY DATE(vo.create_time)
+        ORDER BY day ASC
+    </select>
+
+    <select id="findAdminVoucherUsage" resultType="map">
+        SELECT
+            vo.voucher_id AS voucherId,
+            v.title AS voucherTitle,
+            COUNT(1) AS useCount
+        FROM `voucher_order` vo
+        LEFT JOIN `voucher` v ON vo.voucher_id = v.id
+        WHERE vo.create_time <![CDATA[>=]]> #{startTime}
+          AND vo.create_time <![CDATA[<=]]> #{endTime}
+        GROUP BY vo.voucher_id, v.title
+        ORDER BY useCount DESC
+        LIMIT #{limit}
+    </select>
+
+    <select id="countOrdersSince" resultType="long">
+        SELECT COUNT(1)
+        FROM `voucher_order`
+        WHERE create_time &gt;= #{since}
+    </select>
+
+    <select id="countOrdersTrend" resultType="map">
+        SELECT DATE(create_time) AS day, COUNT(1) AS value
+        FROM `voucher_order`
+        WHERE create_time &gt;= #{startTime}
+          AND create_time &lt;= #{endTime}
+        GROUP BY DATE(create_time)
+        ORDER BY day ASC
+    </select>
+
+</mapper>

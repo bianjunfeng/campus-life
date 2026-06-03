@@ -1,0 +1,105 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="com.campus.campus_life_ai.knowledge.mapper.KnowledgeBaseMapper">
+
+    <resultMap id="KnowledgeBaseResultMap" type="com.campus.campus_life_ai.knowledge.entity.KnowledgeBase">
+        <id property="id" column="id"/>
+        <result property="ownerType" column="owner_type"/>
+        <result property="ownerId" column="owner_id"/>
+        <result property="name" column="name"/>
+        <result property="description" column="description"/>
+        <result property="visibility" column="visibility"/>
+        <result property="status" column="status"/>
+        <result property="documentCount" column="document_count"/>
+        <result property="totalSize" column="total_size"/>
+        <result property="createdBy" column="created_by"/>
+        <result property="createdAt" column="created_at"/>
+        <result property="updatedAt" column="updated_at"/>
+    </resultMap>
+
+    <insert id="insert" parameterType="com.campus.campus_life_ai.knowledge.entity.KnowledgeBase" useGeneratedKeys="true" keyProperty="id">
+        INSERT INTO ai_knowledge_base (
+            owner_type, owner_id, name, description, visibility, status,
+            document_count, total_size, created_by, created_at, updated_at
+        ) VALUES (
+            #{ownerType}, #{ownerId}, #{name}, #{description}, #{visibility}, #{status},
+            #{documentCount}, #{totalSize}, #{createdBy}, #{createdAt}, #{updatedAt}
+        )
+    </insert>
+
+    <select id="findById" resultMap="KnowledgeBaseResultMap">
+        SELECT * FROM ai_knowledge_base WHERE id = #{id} LIMIT 1
+    </select>
+
+    <select id="findOwnedUserBase" resultMap="KnowledgeBaseResultMap">
+        SELECT * FROM ai_knowledge_base
+        WHERE id = #{id}
+          AND owner_type = 'USER'
+          AND owner_id = #{userId}
+          AND status != 2
+        LIMIT 1
+    </select>
+
+    <select id="findUserBases" resultMap="KnowledgeBaseResultMap">
+        SELECT * FROM ai_knowledge_base
+        WHERE owner_type = 'USER'
+          AND owner_id = #{userId}
+          AND status != 2
+        ORDER BY updated_at DESC, id DESC
+    </select>
+
+    <select id="countUserBases" resultType="int">
+        SELECT COUNT(1) FROM ai_knowledge_base
+        WHERE owner_type = 'USER'
+          AND owner_id = #{userId}
+          AND status != 2
+    </select>
+
+    <select id="sumUserStorage" resultType="long">
+        SELECT COALESCE(SUM(total_size), 0) FROM ai_knowledge_base
+        WHERE owner_type = 'USER'
+          AND owner_id = #{userId}
+          AND status != 2
+    </select>
+
+    <update id="updateOwnedUserBase" parameterType="com.campus.campus_life_ai.knowledge.entity.KnowledgeBase">
+        UPDATE ai_knowledge_base
+        SET name = #{name},
+            description = #{description},
+            updated_at = #{updatedAt}
+        WHERE id = #{id}
+          AND owner_type = 'USER'
+          AND owner_id = #{ownerId}
+          AND status != 2
+    </update>
+
+    <update id="markDeletedUserBase">
+        UPDATE ai_knowledge_base
+        SET status = 2,
+            updated_at = NOW()
+        WHERE id = #{id}
+          AND owner_type = 'USER'
+          AND owner_id = #{userId}
+          AND status != 2
+    </update>
+
+    <update id="refreshStats">
+        UPDATE ai_knowledge_base
+        SET document_count = (
+                SELECT COUNT(1)
+                FROM ai_knowledge_document d
+                WHERE d.kb_id = #{id} AND d.status != 2
+            ),
+            total_size = (
+                SELECT COALESCE(SUM(d.file_size), 0)
+                FROM ai_knowledge_document d
+                WHERE d.kb_id = #{id} AND d.status != 2
+            ),
+            updated_at = NOW()
+        WHERE id = #{id}
+    </update>
+
+</mapper>

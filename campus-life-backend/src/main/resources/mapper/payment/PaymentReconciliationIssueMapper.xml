@@ -1,0 +1,196 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="com.campus.campus_life_backend.modules.payment.mapper.PaymentReconciliationIssueMapper">
+
+    <resultMap id="PaymentReconciliationIssueResultMap" type="com.campus.campus_life_backend.modules.payment.entity.PaymentReconciliationIssue">
+        <id property="id" column="id"/>
+        <result property="issueKey" column="issue_key"/>
+        <result property="bizType" column="biz_type"/>
+        <result property="paymentNo" column="payment_no"/>
+        <result property="bizOrderNo" column="biz_order_no"/>
+        <result property="userId" column="user_id"/>
+        <result property="channel" column="channel"/>
+        <result property="issueType" column="issue_type"/>
+        <result property="issueLevel" column="issue_level"/>
+        <result property="issueStatus" column="issue_status"/>
+        <result property="issueMessage" column="issue_message"/>
+        <result property="paymentOrderStatus" column="payment_order_status"/>
+        <result property="voucherOrderStatus" column="voucher_order_status"/>
+        <result property="voucherPaymentStatus" column="voucher_payment_status"/>
+        <result property="paymentAmount" column="payment_amount"/>
+        <result property="recordedRefundedAmount" column="recorded_refunded_amount"/>
+        <result property="actualRefundedAmount" column="actual_refunded_amount"/>
+        <result property="lastCheckedTime" column="last_checked_time"/>
+        <result property="resolvedTime" column="resolved_time"/>
+        <result property="resolvedBy" column="resolved_by"/>
+        <result property="resolveNote" column="resolve_note"/>
+        <result property="createTime" column="create_time"/>
+        <result property="updateTime" column="update_time"/>
+    </resultMap>
+
+    <select id="findByIssueKey" resultMap="PaymentReconciliationIssueResultMap">
+        SELECT * FROM `payment_reconciliation_issue`
+        WHERE issue_key = #{issueKey}
+        LIMIT 1
+    </select>
+
+    <select id="findOpenIssuesByPaymentOrBiz" resultMap="PaymentReconciliationIssueResultMap">
+        SELECT * FROM `payment_reconciliation_issue`
+        WHERE issue_status = 'OPEN'
+          AND (
+            (#{paymentNo} IS NOT NULL AND payment_no = #{paymentNo})
+            OR biz_order_no = #{bizOrderNo}
+          )
+    </select>
+
+    <insert id="insert" parameterType="com.campus.campus_life_backend.modules.payment.entity.PaymentReconciliationIssue" useGeneratedKeys="true" keyProperty="id">
+        INSERT INTO `payment_reconciliation_issue` (
+            issue_key, biz_type, payment_no, biz_order_no, user_id, channel,
+            issue_type, issue_level, issue_status, issue_message,
+            payment_order_status, voucher_order_status, voucher_payment_status,
+            payment_amount, recorded_refunded_amount, actual_refunded_amount,
+            last_checked_time, resolved_time, resolved_by, resolve_note
+        ) VALUES (
+            #{issueKey}, #{bizType}, #{paymentNo}, #{bizOrderNo}, #{userId}, #{channel},
+            #{issueType}, #{issueLevel}, #{issueStatus}, #{issueMessage},
+            #{paymentOrderStatus}, #{voucherOrderStatus}, #{voucherPaymentStatus},
+            #{paymentAmount}, #{recordedRefundedAmount}, #{actualRefundedAmount},
+            #{lastCheckedTime}, #{resolvedTime}, #{resolvedBy}, #{resolveNote}
+        )
+    </insert>
+
+    <update id="updateOpenIssue" parameterType="com.campus.campus_life_backend.modules.payment.entity.PaymentReconciliationIssue">
+        UPDATE `payment_reconciliation_issue`
+        SET
+            biz_type = #{bizType},
+            payment_no = #{paymentNo},
+            biz_order_no = #{bizOrderNo},
+            user_id = #{userId},
+            channel = #{channel},
+            issue_type = #{issueType},
+            issue_level = #{issueLevel},
+            issue_status = #{issueStatus},
+            issue_message = #{issueMessage},
+            payment_order_status = #{paymentOrderStatus},
+            voucher_order_status = #{voucherOrderStatus},
+            voucher_payment_status = #{voucherPaymentStatus},
+            payment_amount = #{paymentAmount},
+            recorded_refunded_amount = #{recordedRefundedAmount},
+            actual_refunded_amount = #{actualRefundedAmount},
+            last_checked_time = #{lastCheckedTime},
+            resolved_time = #{resolvedTime},
+            resolved_by = #{resolvedBy},
+            resolve_note = #{resolveNote}
+        WHERE issue_key = #{issueKey}
+    </update>
+
+    <update id="markResolved">
+        UPDATE `payment_reconciliation_issue`
+        SET
+            issue_status = 'RESOLVED',
+            resolved_time = #{resolvedTime},
+            resolved_by = #{resolvedBy},
+            resolve_note = #{resolveNote},
+            last_checked_time = #{resolvedTime}
+        WHERE id = #{id}
+    </update>
+
+    <select id="findIssueViews" resultType="map">
+        SELECT
+            id,
+            issue_key AS issueKey,
+            biz_type AS bizType,
+            payment_no AS paymentNo,
+            biz_order_no AS bizOrderNo,
+            user_id AS userId,
+            channel,
+            issue_type AS issueType,
+            issue_level AS issueLevel,
+            issue_status AS issueStatus,
+            issue_message AS issueMessage,
+            payment_order_status AS paymentOrderStatus,
+            voucher_order_status AS voucherOrderStatus,
+            voucher_payment_status AS voucherPaymentStatus,
+            payment_amount AS paymentAmount,
+            recorded_refunded_amount AS recordedRefundedAmount,
+            actual_refunded_amount AS actualRefundedAmount,
+            last_checked_time AS lastCheckedTime,
+            resolved_time AS resolvedTime,
+            resolved_by AS resolvedBy,
+            resolve_note AS resolveNote,
+            create_time AS createTime,
+            update_time AS updateTime
+        FROM `payment_reconciliation_issue`
+        <where>
+            <if test="status != null and status != ''">
+                AND issue_status = #{status}
+            </if>
+            <if test="issueType != null and issueType != ''">
+                AND issue_type = #{issueType}
+            </if>
+        </where>
+        ORDER BY
+            CASE WHEN issue_status = 'OPEN' THEN 0 ELSE 1 END,
+            last_checked_time DESC,
+            id DESC
+    </select>
+
+    <select id="findIssueSummary" resultType="map">
+        SELECT
+            COUNT(1) AS totalIssues,
+            SUM(CASE WHEN issue_status = 'OPEN' THEN 1 ELSE 0 END) AS openIssues,
+            SUM(CASE WHEN issue_status = 'RESOLVED' THEN 1 ELSE 0 END) AS resolvedIssues,
+            SUM(CASE WHEN issue_level = 'CRITICAL' AND issue_status = 'OPEN' THEN 1 ELSE 0 END) AS criticalOpenIssues
+        FROM `payment_reconciliation_issue`
+    </select>
+
+    <select id="findPaymentOrderCandidates" resultType="map">
+        SELECT
+            po.payment_no AS paymentNo,
+            po.biz_type AS bizType,
+            po.biz_order_no AS bizOrderNo,
+            po.user_id AS userId,
+            po.channel AS channel,
+            po.status AS paymentOrderStatus,
+            po.amount AS paymentAmount,
+            po.refunded_amount AS recordedRefundedAmount,
+            vo.status AS voucherOrderStatus,
+            vo.payment_status AS voucherPaymentStatus,
+            COALESCE((
+                SELECT SUM(pro.refund_amount)
+                FROM `payment_refund_order` pro
+                WHERE pro.payment_no = po.payment_no
+                  AND pro.status = 'SUCCESS'
+            ), 0) AS actualRefundedAmount
+        FROM `payment_order` po
+        LEFT JOIN `voucher_order` vo
+            ON po.biz_type = 'VOUCHER'
+           AND vo.order_no = po.biz_order_no
+        WHERE po.create_time <![CDATA[>=]]> #{sinceTime}
+        ORDER BY po.create_time DESC
+        LIMIT #{limit}
+    </select>
+
+    <select id="findPaidVoucherOrdersMissingPayment" resultType="map">
+        SELECT
+            vo.order_no AS bizOrderNo,
+            vo.user_id AS userId,
+            vo.payment_method AS channel,
+            vo.status AS voucherOrderStatus,
+            vo.payment_status AS voucherPaymentStatus,
+            vo.pay_amount AS paymentAmount
+        FROM `voucher_order` vo
+        LEFT JOIN `payment_order` po
+            ON po.biz_type = 'VOUCHER'
+           AND po.biz_order_no = vo.order_no
+        WHERE vo.create_time <![CDATA[>=]]> #{sinceTime}
+          AND vo.payment_status IN (1, 3)
+          AND po.id IS NULL
+        ORDER BY vo.create_time DESC
+        LIMIT #{limit}
+    </select>
+
+</mapper>

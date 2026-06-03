@@ -1,0 +1,23 @@
+target/
+target/.m2repo/
+.idea/
+*.iml
+.settings/
+.classpath
+.project
+.vscode/
+
+### Runtime output ###
+logs/
+*.log
+*.out.log
+*.err.log
+probe-*.log
+restart-*.log
+run-*.log
+uploads/
+
+### Local env ###
+.env
+.env.*
+!.env.example

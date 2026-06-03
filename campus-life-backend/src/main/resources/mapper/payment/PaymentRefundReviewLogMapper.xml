@@ -1,0 +1,46 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="com.campus.campus_life_backend.modules.payment.mapper.PaymentRefundReviewLogMapper">
+
+    <resultMap id="PaymentRefundReviewLogResultMap" type="com.campus.campus_life_backend.modules.payment.entity.PaymentRefundReviewLog">
+        <id property="id" column="id"/>
+        <result property="refundNo" column="refund_no"/>
+        <result property="operatorRole" column="operator_role"/>
+        <result property="operatorId" column="operator_id"/>
+        <result property="action" column="action"/>
+        <result property="fromStatus" column="from_status"/>
+        <result property="toStatus" column="to_status"/>
+        <result property="comment" column="comment"/>
+        <result property="createTime" column="create_time"/>
+    </resultMap>
+
+    <insert id="insert" parameterType="com.campus.campus_life_backend.modules.payment.entity.PaymentRefundReviewLog" useGeneratedKeys="true" keyProperty="id">
+        INSERT INTO `payment_refund_review_log` (
+            refund_no,
+            operator_role,
+            operator_id,
+            action,
+            from_status,
+            to_status,
+            comment
+        ) VALUES (
+            #{refundNo},
+            #{operatorRole},
+            #{operatorId},
+            #{action},
+            #{fromStatus},
+            #{toStatus},
+            #{comment}
+        )
+    </insert>
+
+    <select id="findByRefundNo" resultMap="PaymentRefundReviewLogResultMap">
+        SELECT * FROM `payment_refund_review_log`
+        WHERE refund_no = #{refundNo}
+        ORDER BY id DESC
+    </select>
+
+</mapper>

@@ -1,0 +1,49 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="com.campus.campus_life_backend.common.event.mapper.EventConsumeLogMapper">
+
+    <select id="hasSuccess" resultType="int">
+        SELECT COUNT(1)
+        FROM event_consume_log
+        WHERE event_id = #{eventId}
+          AND consumer_group = #{consumerGroup}
+          AND status = 'SUCCESS'
+    </select>
+
+    <insert id="insertProcessing">
+        INSERT INTO event_consume_log (
+            event_id, consumer_group, topic, message_key, status, first_seen_at, updated_at
+        ) VALUES (
+            #{eventId}, #{consumerGroup}, #{topic}, #{messageKey}, 'PROCESSING', NOW(), NOW()
+        )
+        ON DUPLICATE KEY UPDATE
+            status = CASE WHEN status = 'SUCCESS' THEN status ELSE 'PROCESSING' END,
+            topic = VALUES(topic),
+            message_key = VALUES(message_key),
+            updated_at = NOW()
+    </insert>
+
+    <update id="markSuccess">
+        UPDATE event_consume_log
+        SET status = 'SUCCESS',
+            processed_at = #{processedAt},
+            last_error = NULL,
+            updated_at = NOW()
+        WHERE event_id = #{eventId}
+          AND consumer_group = #{consumerGroup}
+    </update>
+
+    <update id="markFailed">
+        UPDATE event_consume_log
+        SET status = 'FAILED',
+            last_error = #{lastError},
+            updated_at = NOW()
+        WHERE event_id = #{eventId}
+          AND consumer_group = #{consumerGroup}
+          AND status &lt;&gt; 'SUCCESS'
+    </update>
+
+</mapper>

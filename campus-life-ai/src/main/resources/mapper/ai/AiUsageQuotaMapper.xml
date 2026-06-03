@@ -1,0 +1,75 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="com.campus.campus_life_ai.ai.mapper.AiUsageQuotaMapper">
+
+    <resultMap id="AiUsageQuotaResultMap" type="com.campus.campus_life_ai.ai.entity.AiUsageQuota">
+        <id property="id" column="id"/>
+        <result property="subjectType" column="subject_type"/>
+        <result property="subjectId" column="subject_id"/>
+        <result property="capabilityCode" column="capability_code"/>
+        <result property="sceneCode" column="scene_code"/>
+        <result property="quotaPeriod" column="quota_period"/>
+        <result property="maxCalls" column="max_calls"/>
+        <result property="maxTokens" column="max_tokens"/>
+        <result property="maxCost" column="max_cost"/>
+        <result property="enabled" column="enabled"/>
+        <result property="createdAt" column="created_at"/>
+        <result property="updatedAt" column="updated_at"/>
+    </resultMap>
+
+    <select id="findAll" resultMap="AiUsageQuotaResultMap">
+        SELECT * FROM ai_usage_quota
+        ORDER BY enabled DESC, updated_at DESC, id DESC
+    </select>
+
+    <select id="findEnabled" resultMap="AiUsageQuotaResultMap">
+        SELECT * FROM ai_usage_quota
+        WHERE enabled = 1
+        ORDER BY id ASC
+    </select>
+
+    <select id="findById" resultMap="AiUsageQuotaResultMap">
+        SELECT * FROM ai_usage_quota WHERE id = #{id} LIMIT 1
+    </select>
+
+    <select id="countByCapabilityCode" resultType="int">
+        SELECT COUNT(1) FROM ai_usage_quota WHERE capability_code = #{capabilityCode}
+    </select>
+
+    <select id="countBySceneCode" resultType="int">
+        SELECT COUNT(1) FROM ai_usage_quota WHERE scene_code = #{sceneCode}
+    </select>
+
+    <insert id="insert" parameterType="com.campus.campus_life_ai.ai.entity.AiUsageQuota" useGeneratedKeys="true" keyProperty="id">
+        INSERT INTO ai_usage_quota (
+            subject_type, subject_id, capability_code, scene_code, quota_period,
+            max_calls, max_tokens, max_cost, enabled, created_at, updated_at
+        ) VALUES (
+            #{subjectType}, #{subjectId}, #{capabilityCode}, #{sceneCode}, #{quotaPeriod},
+            #{maxCalls}, #{maxTokens}, #{maxCost}, #{enabled}, #{createdAt}, #{updatedAt}
+        )
+    </insert>
+
+    <update id="update" parameterType="com.campus.campus_life_ai.ai.entity.AiUsageQuota">
+        UPDATE ai_usage_quota
+        SET subject_type = #{subjectType},
+            subject_id = #{subjectId},
+            capability_code = #{capabilityCode},
+            scene_code = #{sceneCode},
+            quota_period = #{quotaPeriod},
+            max_calls = #{maxCalls},
+            max_tokens = #{maxTokens},
+            max_cost = #{maxCost},
+            enabled = #{enabled},
+            updated_at = #{updatedAt}
+        WHERE id = #{id}
+    </update>
+
+    <delete id="deleteById">
+        DELETE FROM ai_usage_quota WHERE id = #{id}
+    </delete>
+
+</mapper>

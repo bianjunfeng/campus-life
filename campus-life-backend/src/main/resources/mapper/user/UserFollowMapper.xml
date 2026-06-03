@@ -1,0 +1,104 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="com.campus.campus_life_backend.modules.user.mapper.UserFollowMapper">
+
+    <insert id="insertUserFollow" parameterType="com.campus.campus_life_backend.modules.user.entity.UserFollow">
+        INSERT INTO `user_follow` (follower_id, followee_id, create_time)
+        VALUES (#{followerId}, #{followeeId}, NOW())
+    </insert>
+
+    <select id="findByFollowerIdAndFolloweeId" resultType="com.campus.campus_life_backend.modules.user.entity.UserFollow">
+        SELECT * FROM `user_follow`
+        WHERE follower_id = #{followerId} AND followee_id = #{followeeId}
+    </select>
+
+    <select id="findFollowersByUserId" resultType="com.campus.campus_life_backend.modules.user.entity.UserFollow">
+        SELECT * FROM `user_follow`
+        WHERE followee_id = #{userId}
+        ORDER BY create_time DESC
+    </select>
+
+    <select id="findFollowingsByUserId" resultType="com.campus.campus_life_backend.modules.user.entity.UserFollow">
+        SELECT * FROM `user_follow`
+        WHERE follower_id = #{userId}
+        ORDER BY create_time DESC
+    </select>
+
+    <!-- 查询粉丝列表（带用户信息） -->
+    <select id="findFollowersWithUserInfo" resultType="com.campus.campus_life_backend.modules.user.dto.UserFollowDTO">
+        SELECT
+            uf.id,
+            uf.follower_id as followerId,
+            u.id as userId,
+            u.username as name,
+            u.avatar_url as avatar,
+            u.bio,
+            uf.followee_id as followeeId
+        FROM `user_follow` uf
+        INNER JOIN `user` u ON uf.follower_id = u.id
+        WHERE uf.followee_id = #{userId}
+        ORDER BY uf.create_time DESC
+    </select>
+
+    <!-- 查询关注列表（带用户信息） -->
+    <select id="findFollowingsWithUserInfo" resultType="com.campus.campus_life_backend.modules.user.dto.UserFollowDTO">
+        SELECT
+            uf.id,
+            uf.followee_id as followeeId,
+            u.id as userId,
+            u.username as name,
+            u.avatar_url as avatar,
+            u.bio,
+            uf.follower_id as followerId
+        FROM `user_follow` uf
+        INNER JOIN `user` u ON uf.followee_id = u.id
+        WHERE uf.follower_id = #{userId}
+        ORDER BY uf.create_time DESC
+    </select>
+
+    <!-- 查询互相关注列表（带用户信息） -->
+    <select id="findMutualFollowsWithUserInfo" resultType="com.campus.campus_life_backend.modules.user.dto.UserFollowDTO">
+        SELECT
+            uf1.id,
+            uf1.followee_id as followeeId,
+            u.id as userId,
+            u.username as name,
+            u.avatar_url as avatar,
+            u.bio,
+            uf1.follower_id as followerId,
+            1 as isMutual
+        FROM `user_follow` uf1
+        INNER JOIN `user_follow` uf2 ON uf1.follower_id = uf2.followee_id AND uf1.followee_id = uf2.follower_id
+        INNER JOIN `user` u ON uf1.followee_id = u.id
+        WHERE uf1.follower_id = #{userId}
+        ORDER BY uf1.create_time DESC
+    </select>
+
+    <select id="findFollowedUserIdsByFollowerIdAndFolloweeIds" resultType="long">
+        SELECT followee_id
+        FROM `user_follow`
+        WHERE follower_id = #{followerId}
+          AND followee_id IN
+          <foreach collection="followeeIds" item="followeeId" open="(" separator="," close=")">
+              #{followeeId}
+          </foreach>
+    </select>
+
+    <delete id="deleteUserFollow">
+        DELETE FROM `user_follow`
+        WHERE follower_id = #{followerId} AND followee_id = #{followeeId}
+    </delete>
+
+    <select id="countFollowers" resultType="int">
+        SELECT COUNT(*) FROM `user_follow` WHERE followee_id = #{userId}
+    </select>
+
+    <select id="countFollowings" resultType="int">
+        SELECT COUNT(*) FROM `user_follow` WHERE follower_id = #{userId}
+    </select>
+
+</mapper>
+

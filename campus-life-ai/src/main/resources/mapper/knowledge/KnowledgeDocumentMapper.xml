@@ -1,0 +1,74 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="com.campus.campus_life_ai.knowledge.mapper.KnowledgeDocumentMapper">
+
+    <resultMap id="KnowledgeDocumentResultMap" type="com.campus.campus_life_ai.knowledge.entity.KnowledgeDocument">
+        <id property="id" column="id"/>
+        <result property="kbId" column="kb_id"/>
+        <result property="title" column="title"/>
+        <result property="originalFilename" column="original_filename"/>
+        <result property="filePath" column="file_path"/>
+        <result property="fileSize" column="file_size"/>
+        <result property="contentHash" column="content_hash"/>
+        <result property="status" column="status"/>
+        <result property="parseStatus" column="parse_status"/>
+        <result property="errorMessage" column="error_message"/>
+        <result property="chunkCount" column="chunk_count"/>
+        <result property="createdBy" column="created_by"/>
+        <result property="createdAt" column="created_at"/>
+        <result property="updatedAt" column="updated_at"/>
+    </resultMap>
+
+    <insert id="insert" parameterType="com.campus.campus_life_ai.knowledge.entity.KnowledgeDocument" useGeneratedKeys="true" keyProperty="id">
+        INSERT INTO ai_knowledge_document (
+            kb_id, title, original_filename, file_path, file_size, content_hash,
+            status, parse_status, error_message, chunk_count, created_by, created_at, updated_at
+        ) VALUES (
+            #{kbId}, #{title}, #{originalFilename}, #{filePath}, #{fileSize}, #{contentHash},
+            #{status}, #{parseStatus}, #{errorMessage}, #{chunkCount}, #{createdBy}, #{createdAt}, #{updatedAt}
+        )
+    </insert>
+
+    <select id="findById" resultMap="KnowledgeDocumentResultMap">
+        SELECT * FROM ai_knowledge_document WHERE id = #{id} LIMIT 1
+    </select>
+
+    <select id="findActiveByIdAndKbId" resultMap="KnowledgeDocumentResultMap">
+        SELECT * FROM ai_knowledge_document
+        WHERE id = #{id}
+          AND kb_id = #{kbId}
+          AND status != 2
+        LIMIT 1
+    </select>
+
+    <select id="findByKbId" resultMap="KnowledgeDocumentResultMap">
+        SELECT * FROM ai_knowledge_document
+        WHERE kb_id = #{kbId}
+          AND status != 2
+        ORDER BY created_at DESC, id DESC
+    </select>
+
+    <update id="updateParseState" parameterType="com.campus.campus_life_ai.knowledge.entity.KnowledgeDocument">
+        UPDATE ai_knowledge_document
+        SET parse_status = #{parseStatus},
+            error_message = #{errorMessage},
+            chunk_count = #{chunkCount},
+            content_hash = #{contentHash},
+            updated_at = #{updatedAt}
+        WHERE id = #{id}
+          AND status != 2
+    </update>
+
+    <update id="markDeleted">
+        UPDATE ai_knowledge_document
+        SET status = 2,
+            updated_at = NOW()
+        WHERE id = #{id}
+          AND kb_id = #{kbId}
+          AND status != 2
+    </update>
+
+</mapper>

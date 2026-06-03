@@ -1,0 +1,28 @@
+server:
+  port: 8090
+  forward-headers-strategy: framework
+
+spring:
+  data:
+    redis:
+      host: redis
+      port: 6379
+      password: ${REDIS_PASSWORD:}
+      timeout: 3000
+      database: 0
+
+gateway:
+  backend-uri: http://backend:8080
+  voucher-uri: http://backend:8080
+  ai-uri: http://ai:8083
+  gray:
+    enabled: false
+    backend-uri: http://backend:8080
+  rate-limit:
+    replenish-rate: ${GATEWAY_RATE_LIMIT_REPLENISH_RATE:80}
+    burst-capacity: ${GATEWAY_RATE_LIMIT_BURST_CAPACITY:160}
+    requested-tokens: ${GATEWAY_RATE_LIMIT_REQUESTED_TOKENS:1}
+  auth:
+    enabled: true
+    jwt-secret: ${JWT_SECRET:please-change-this-docker-secret}
+

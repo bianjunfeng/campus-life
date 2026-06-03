@@ -1,0 +1,4 @@
+#设置启用的环境
+spring:
+  profiles:
+    active: dev,local

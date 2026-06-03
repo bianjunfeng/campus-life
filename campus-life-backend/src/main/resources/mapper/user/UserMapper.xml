@@ -1,0 +1,429 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="com.campus.campus_life_backend.modules.user.mapper.UserMapper">
+
+    <!-- 插入用户 -->
+    <insert id="insertUser" parameterType="com.campus.campus_life_backend.modules.user.entity.User" useGeneratedKeys="true" keyProperty="id">
+        INSERT INTO `user` (
+            phone,
+            wechat_openid,
+            qq_openid,
+            email,
+            username,
+            password_hash,
+            role,
+            status,
+            avatar_url,
+            bio,
+            gender,
+            birthday,
+            region,
+            create_time,
+            update_time
+        ) VALUES (
+                     #{phone},
+                     #{wechatOpenid},
+                     #{qqOpenid},
+                     #{email},
+                     #{username},
+                     #{passwordHash},
+                     #{role},
+                     #{status},
+                     #{avatarUrl},
+                     #{bio},
+                     #{gender},
+                     #{birthday},
+                     #{region},
+                     NOW(),
+                     NOW()
+                 )
+    </insert>
+<!-- resultType 查询返回的单条记录所封装的类型-->
+    <select id="findByPhone" resultType="com.campus.campus_life_backend.modules.user.entity.User">
+        SELECT
+            id, phone, wechat_openid as wechatOpenid, qq_openid as qqOpenid, email, username, password_hash as passwordHash, salt,
+            role, status, avatar_url as avatarUrl, bio,
+            gender, birthday, region,
+            create_time as createTime, update_time as updateTime
+        FROM `user`
+        WHERE phone = #{phone}
+        LIMIT 1
+    </select>
+
+    <select id="findByEmail" resultType="com.campus.campus_life_backend.modules.user.entity.User">
+        SELECT
+            id, phone, wechat_openid as wechatOpenid, qq_openid as qqOpenid, email, username, password_hash as passwordHash, salt,
+            role, status, avatar_url as avatarUrl, bio,
+            gender, birthday, region,
+            create_time as createTime, update_time as updateTime
+        FROM `user`
+        WHERE email = #{email}
+        LIMIT 1
+    </select>
+
+    <select id="findByUsername" resultType="com.campus.campus_life_backend.modules.user.entity.User">
+        SELECT
+            id, phone, wechat_openid as wechatOpenid, qq_openid as qqOpenid, email, username, password_hash as passwordHash, salt,
+            role, status, avatar_url as avatarUrl, bio,
+            gender, birthday, region,
+            create_time as createTime, update_time as updateTime
+        FROM `user`
+        WHERE username = #{username}
+        LIMIT 1
+    </select>
+
+    <select id="findById" resultType="com.campus.campus_life_backend.modules.user.entity.User">
+        SELECT
+            id, phone, wechat_openid as wechatOpenid, qq_openid as qqOpenid, email, username, password_hash as passwordHash, salt,
+            role, status, avatar_url as avatarUrl, bio,
+            gender, birthday, region,
+            create_time as createTime, update_time as updateTime
+        FROM `user`
+        WHERE id = #{id}
+    </select>
+
+    <select id="findByIds" resultType="com.campus.campus_life_backend.modules.user.entity.User">
+        SELECT
+            id, phone, wechat_openid as wechatOpenid, qq_openid as qqOpenid, email, username, password_hash as passwordHash, salt,
+            role, status, avatar_url as avatarUrl, bio,
+            gender, birthday, region,
+            create_time as createTime, update_time as updateTime
+        FROM `user`
+        WHERE id IN
+        <foreach collection="ids" item="id" open="(" separator="," close=")">
+            #{id}
+        </foreach>
+    </select>
+
+    <select id="findByWechatOpenid" resultType="com.campus.campus_life_backend.modules.user.entity.User">
+        SELECT
+            id, phone, wechat_openid as wechatOpenid, qq_openid as qqOpenid, email, username, password_hash as passwordHash, salt,
+            role, status, avatar_url as avatarUrl, bio,
+            gender, birthday, region,
+            create_time as createTime, update_time as updateTime
+        FROM `user`
+        WHERE wechat_openid = #{wechatOpenid}
+        LIMIT 1
+    </select>
+
+    <select id="findByQqOpenid" resultType="com.campus.campus_life_backend.modules.user.entity.User">
+        SELECT
+            id, phone, wechat_openid as wechatOpenid, qq_openid as qqOpenid, email, username, password_hash as passwordHash, salt,
+            role, status, avatar_url as avatarUrl, bio,
+            gender, birthday, region,
+            create_time as createTime, update_time as updateTime
+        FROM `user`
+        WHERE qq_openid = #{qqOpenid}
+        LIMIT 1
+    </select>
+
+    <select id="findAll" resultType="com.campus.campus_life_backend.modules.user.entity.User">
+        SELECT
+            id, phone, wechat_openid as wechatOpenid, qq_openid as qqOpenid, email, username, password_hash as passwordHash, salt,
+            role, status, avatar_url as avatarUrl, bio,
+            gender, birthday, region,
+            create_time as createTime, update_time as updateTime
+        FROM `user`
+        ORDER BY create_time DESC
+    </select>
+
+    <update id="updateUser" parameterType="com.campus.campus_life_backend.modules.user.entity.User">
+        UPDATE `user`
+        SET
+            phone = #{phone},
+            email = #{email},
+            username = #{username},
+            avatar_url = #{avatarUrl},
+            bio = #{bio},
+            gender = #{gender},
+            birthday = #{birthday},
+            region = #{region},
+            update_time = NOW()
+        WHERE id = #{id}
+    </update>
+
+    <update id="updatePassword">
+        UPDATE `user`
+        SET
+            password_hash = #{passwordHash},
+            update_time = NOW()
+        WHERE id = #{id}
+    </update>
+
+    <update id="updateStatus">
+        UPDATE `user`
+        SET
+            status = #{status},
+            update_time = NOW()
+        WHERE id = #{id}
+    </update>
+
+    <select id="searchUsers" resultType="com.campus.campus_life_backend.modules.search.dto.SearchUserItemDTO">
+        SELECT
+            u.id AS id,
+            u.username AS username,
+            u.avatar_url AS avatarUrl,
+            u.bio AS bio,
+            u.role AS role,
+            u.create_time AS createTime,
+            COALESCE(pc.post_count, 0) AS postCount,
+            COALESCE(fc.follower_count, 0) AS followerCount
+        FROM `user` u
+        LEFT JOIN (
+            SELECT p.user_id, COUNT(1) AS post_count
+            FROM `post` p
+            WHERE p.status = 0
+            GROUP BY p.user_id
+        ) pc ON pc.user_id = u.id
+        LEFT JOIN (
+            SELECT uf.followee_id, COUNT(1) AS follower_count
+            FROM `user_follow` uf
+            GROUP BY uf.followee_id
+        ) fc ON fc.followee_id = u.id
+        WHERE u.status = 1
+          AND (
+                u.username LIKE CONCAT('%', #{keyword}, '%')
+             OR IFNULL(u.bio, '') LIKE CONCAT('%', #{keyword}, '%')
+             OR u.phone LIKE CONCAT('%', #{keyword}, '%')
+          )
+        ORDER BY
+            (CASE WHEN u.username = #{keyword} THEN 3 WHEN u.username LIKE CONCAT(#{keyword}, '%') THEN 2 ELSE 1 END) DESC,
+            followerCount DESC,
+            u.create_time DESC
+        LIMIT #{limit} OFFSET #{offset}
+    </select>
+
+    <select id="countSearchUsers" resultType="long">
+        SELECT COUNT(1)
+        FROM `user` u
+        WHERE u.status = 1
+          AND (
+                u.username LIKE CONCAT('%', #{keyword}, '%')
+             OR IFNULL(u.bio, '') LIKE CONCAT('%', #{keyword}, '%')
+             OR u.phone LIKE CONCAT('%', #{keyword}, '%')
+          )
+    </select>
+
+    <select id="findSearchUserById" resultType="com.campus.campus_life_backend.modules.search.dto.UserSearchSourceDTO">
+        SELECT
+            u.id AS id,
+            u.username AS username,
+            u.avatar_url AS avatarUrl,
+            u.bio AS bio,
+            u.phone AS phone,
+            u.role AS role,
+            u.status AS status,
+            COALESCE(pc.post_count, 0) AS postCount,
+            COALESCE(fc.follower_count, 0) AS followerCount,
+            u.create_time AS createTime,
+            u.update_time AS updateTime
+        FROM `user` u
+        LEFT JOIN (
+            SELECT p.user_id, COUNT(1) AS post_count
+            FROM `post` p
+            WHERE p.status = 0
+            GROUP BY p.user_id
+        ) pc ON pc.user_id = u.id
+        LEFT JOIN (
+            SELECT uf.followee_id, COUNT(1) AS follower_count
+            FROM `user_follow` uf
+            GROUP BY uf.followee_id
+        ) fc ON fc.followee_id = u.id
+        WHERE u.id = #{id}
+        LIMIT 1
+    </select>
+
+    <select id="findIndexableUserIds" resultType="long">
+        SELECT id
+        FROM `user`
+        WHERE status = 1
+        ORDER BY id ASC
+        LIMIT #{limit} OFFSET #{offset}
+    </select>
+
+    <select id="findUpdatedUserCandidates" resultType="com.campus.campus_life_backend.modules.search.dto.SearchSyncCandidateDTO">
+        SELECT
+            id,
+            update_time
+        FROM `user`
+        WHERE update_time <![CDATA[>=]]> #{since}
+        ORDER BY update_time ASC, id ASC
+        LIMIT #{limit} OFFSET #{offset}
+    </select>
+
+    <sql id="AdminMemberWhere">
+        <where>
+            <choose>
+                <when test="role != null">
+                    AND u.role = #{role}
+                </when>
+                <otherwise>
+                    AND u.role IN (0, 1)
+                </otherwise>
+            </choose>
+            <if test="status != null">
+                AND u.status = #{status}
+            </if>
+            <if test="keyword != null and keyword != ''">
+                AND (
+                    u.username LIKE CONCAT('%', #{keyword}, '%')
+                    OR u.phone LIKE CONCAT('%', #{keyword}, '%')
+                    OR IFNULL(u.email, '') LIKE CONCAT('%', #{keyword}, '%')
+                    <if test="keywordId != null">
+                        OR u.id = #{keywordId}
+                    </if>
+                )
+            </if>
+            <if test="username != null and username != ''">
+                AND u.username LIKE CONCAT('%', #{username}, '%')
+            </if>
+            <if test="phone != null and phone != ''">
+                AND u.phone LIKE CONCAT('%', #{phone}, '%')
+            </if>
+            <if test="email != null and email != ''">
+                AND IFNULL(u.email, '') LIKE CONCAT('%', #{email}, '%')
+            </if>
+            <if test="startTime != null">
+                AND u.create_time <![CDATA[>=]]> #{startTime}
+            </if>
+            <if test="endTime != null">
+                AND u.create_time <![CDATA[<=]]> #{endTime}
+            </if>
+        </where>
+    </sql>
+
+    <select id="findAdminMembers" resultType="map">
+        SELECT
+            u.id AS id,
+            u.username AS username,
+            u.avatar_url AS avatarUrl,
+            u.gender AS gender,
+            u.phone AS phone,
+            u.email AS email,
+            u.role AS role,
+            u.status AS status,
+            u.region AS region,
+            u.create_time AS createTime,
+            COALESCE(pc.post_count, 0) AS postCount,
+            COALESCE(vc.voucher_count, 0) AS voucherCount
+        FROM `user` u
+        LEFT JOIN (
+            SELECT p.user_id, COUNT(1) AS post_count
+            FROM `post` p
+            WHERE p.status = 0
+            GROUP BY p.user_id
+        ) pc ON pc.user_id = u.id
+        LEFT JOIN (
+            SELECT m.user_id, COUNT(1) AS voucher_count
+            FROM `merchant` m
+            INNER JOIN `voucher` v ON v.merchant_id = m.id
+            GROUP BY m.user_id
+        ) vc ON vc.user_id = u.id
+        <include refid="AdminMemberWhere"/>
+        ORDER BY u.create_time DESC, u.id DESC
+        LIMIT #{limit} OFFSET #{offset}
+    </select>
+
+    <select id="countAdminMembers" resultType="long">
+        SELECT COUNT(1)
+        FROM `user` u
+        <include refid="AdminMemberWhere"/>
+    </select>
+
+    <select id="countAdminMembersByStatus" resultType="long">
+        SELECT COUNT(1)
+        FROM `user`
+        <where>
+            role IN (0, 1)
+            <if test="status != null">
+                AND status = #{status}
+            </if>
+        </where>
+    </select>
+
+    <select id="findUserIdsByRole" resultType="long">
+        SELECT id
+        FROM `user`
+        WHERE role = #{role}
+          AND status = 1
+        ORDER BY id ASC
+    </select>
+
+    <select id="countAllForAdmin" resultType="long">
+        SELECT COUNT(1) FROM `user`
+    </select>
+
+    <select id="countByRoleAndStatusForAdmin" resultType="long">
+        SELECT COUNT(1)
+        FROM `user`
+        <where>
+            <if test="role != null">
+                AND role = #{role}
+            </if>
+            <if test="status != null">
+                AND status = #{status}
+            </if>
+        </where>
+    </select>
+
+    <select id="countVerifiedStudentsForAdmin" resultType="long">
+        SELECT COUNT(1)
+        FROM `user`
+        WHERE role = 0
+          AND (is_student_verified = 1 OR status = 1)
+    </select>
+
+    <select id="countVerifiedMerchantsForAdmin" resultType="long">
+        SELECT COUNT(1)
+        FROM `user`
+        WHERE role = 1
+          AND (is_merchant = 1 OR status = 1)
+    </select>
+
+    <select id="countUsersSince" resultType="long">
+        SELECT COUNT(1)
+        FROM `user`
+        WHERE create_time &gt;= #{since}
+    </select>
+
+    <select id="countDistinctRegionsForAdmin" resultType="long">
+        SELECT COUNT(DISTINCT region)
+        FROM `user`
+        WHERE region IS NOT NULL AND region != ''
+    </select>
+
+    <select id="countByGenderForAdmin" resultType="map">
+        SELECT COALESCE(gender, 0) AS name, COUNT(1) AS value
+        FROM `user`
+        GROUP BY COALESCE(gender, 0)
+    </select>
+
+    <select id="countByRegionForAdmin" resultType="map">
+        SELECT COALESCE(NULLIF(region, ''), '未知地区') AS name, COUNT(1) AS value
+        FROM `user`
+        GROUP BY COALESCE(NULLIF(region, ''), '未知地区')
+        ORDER BY value DESC
+        LIMIT #{limit}
+    </select>
+
+    <select id="countByOccupationForAdmin" resultType="map">
+        SELECT COALESCE(NULLIF(occupation, ''), '未填写') AS name, COUNT(1) AS value
+        FROM `user`
+        GROUP BY COALESCE(NULLIF(occupation, ''), '未填写')
+        ORDER BY value DESC
+        LIMIT #{limit}
+    </select>
+
+    <select id="countUsersTrend" resultType="map">
+        SELECT DATE(create_time) AS day, COUNT(1) AS value
+        FROM `user`
+        WHERE create_time &gt;= #{startTime}
+          AND create_time &lt;= #{endTime}
+        GROUP BY DATE(create_time)
+        ORDER BY day ASC
+    </select>
+
+</mapper>

@@ -1,0 +1,161 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="com.campus.campus_life_backend.modules.payment.mapper.PaymentOrderMapper">
+
+    <resultMap id="PaymentOrderResultMap" type="com.campus.campus_life_backend.modules.payment.entity.PaymentOrder">
+        <id property="id" column="id"/>
+        <result property="paymentNo" column="payment_no"/>
+        <result property="bizType" column="biz_type"/>
+        <result property="bizOrderNo" column="biz_order_no"/>
+        <result property="userId" column="user_id"/>
+        <result property="channel" column="channel"/>
+        <result property="title" column="title"/>
+        <result property="description" column="description"/>
+        <result property="amount" column="amount"/>
+        <result property="refundedAmount" column="refunded_amount"/>
+        <result property="status" column="status"/>
+        <result property="channelTradeNo" column="channel_trade_no"/>
+        <result property="idempotencyKey" column="idempotency_key"/>
+        <result property="expireTime" column="expire_time"/>
+        <result property="successTime" column="success_time"/>
+        <result property="lastCallbackTime" column="last_callback_time"/>
+        <result property="version" column="version"/>
+        <result property="createTime" column="create_time"/>
+        <result property="updateTime" column="update_time"/>
+    </resultMap>
+
+    <insert id="insert" parameterType="com.campus.campus_life_backend.modules.payment.entity.PaymentOrder" useGeneratedKeys="true" keyProperty="id">
+        INSERT INTO `payment_order` (
+            payment_no,
+            biz_type,
+            biz_order_no,
+            user_id,
+            channel,
+            title,
+            description,
+            amount,
+            refunded_amount,
+            status,
+            channel_trade_no,
+            idempotency_key,
+            expire_time,
+            success_time,
+            last_callback_time,
+            version
+        ) VALUES (
+            #{paymentNo},
+            #{bizType},
+            #{bizOrderNo},
+            #{userId},
+            #{channel},
+            #{title},
+            #{description},
+            #{amount},
+            #{refundedAmount},
+            #{status},
+            #{channelTradeNo},
+            #{idempotencyKey},
+            #{expireTime},
+            #{successTime},
+            #{lastCallbackTime},
+            #{version}
+        )
+    </insert>
+
+    <select id="findById" resultMap="PaymentOrderResultMap">
+        SELECT * FROM `payment_order` WHERE id = #{id}
+    </select>
+
+    <select id="findByPaymentNo" resultMap="PaymentOrderResultMap">
+        SELECT * FROM `payment_order` WHERE payment_no = #{paymentNo} LIMIT 1
+    </select>
+
+    <select id="findLatestByBizOrderNo" resultMap="PaymentOrderResultMap">
+        SELECT * FROM `payment_order`
+        WHERE biz_type = #{bizType}
+          AND biz_order_no = #{bizOrderNo}
+        ORDER BY id DESC
+        LIMIT 1
+    </select>
+
+    <select id="findLatestByBizOrderNoAndChannel" resultMap="PaymentOrderResultMap">
+        SELECT * FROM `payment_order`
+        WHERE biz_type = #{bizType}
+          AND biz_order_no = #{bizOrderNo}
+          AND channel = #{channel}
+        ORDER BY id DESC
+        LIMIT 1
+    </select>
+
+    <select id="findByIdempotencyKey" resultMap="PaymentOrderResultMap">
+        SELECT * FROM `payment_order`
+        WHERE idempotency_key = #{idempotencyKey}
+        LIMIT 1
+    </select>
+
+    <select id="findExpiredWaitingOrders" resultMap="PaymentOrderResultMap">
+        SELECT * FROM `payment_order`
+        WHERE status IN ('INIT', 'WAIT_PAY')
+          AND expire_time IS NOT NULL
+          AND expire_time &lt;= #{now}
+        ORDER BY expire_time ASC
+        LIMIT #{limit}
+    </select>
+
+    <update id="markWaitingForPay">
+        UPDATE `payment_order`
+        SET
+            status = 'WAIT_PAY',
+            idempotency_key = #{idempotencyKey},
+            version = version + 1
+        WHERE id = #{id}
+          AND status = 'INIT'
+          AND version = #{expectedVersion}
+    </update>
+
+    <update id="markSuccessByPaymentNo">
+        UPDATE `payment_order`
+        SET
+            status = 'SUCCESS',
+            channel_trade_no = #{channelTradeNo},
+            success_time = #{successTime},
+            last_callback_time = #{lastCallbackTime},
+            version = version + 1
+        WHERE payment_no = #{paymentNo}
+          AND status IN ('INIT', 'WAIT_PAY')
+          AND version = #{expectedVersion}
+    </update>
+
+    <update id="markFailedByPaymentNo">
+        UPDATE `payment_order`
+        SET
+            status = 'FAILED',
+            last_callback_time = #{lastCallbackTime},
+            version = version + 1
+        WHERE payment_no = #{paymentNo}
+          AND status IN ('INIT', 'WAIT_PAY')
+          AND version = #{expectedVersion}
+    </update>
+
+    <update id="closeWaitingOrder">
+        UPDATE `payment_order`
+        SET
+            status = 'CLOSED',
+            version = version + 1
+        WHERE payment_no = #{paymentNo}
+          AND status IN ('INIT', 'WAIT_PAY')
+          AND version = #{expectedVersion}
+    </update>
+
+    <update id="markRefunded">
+        UPDATE `payment_order`
+        SET
+            refunded_amount = #{refundedAmount},
+            status = #{status}
+        WHERE payment_no = #{paymentNo}
+    </update>
+
+</mapper>

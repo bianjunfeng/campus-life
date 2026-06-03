@@ -1,0 +1,113 @@
+upstream campus_life_gateway {
+    server gateway:8090;
+}
+
+server {
+    listen 80;
+    server_name ${CONSUMER_SERVER_NAME};
+    root /usr/share/nginx/consumer-web;
+    index index.html;
+
+    client_max_body_size 20m;
+
+    location / {
+        try_files $uri $uri/ /apps/consumer-web/index.html;
+    }
+
+    location /api/ {
+        proxy_pass http://campus_life_gateway;
+        proxy_http_version 1.1;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+        proxy_buffering off;
+        proxy_read_timeout 300s;
+    }
+
+    location /uploads/ {
+        proxy_pass http://campus_life_gateway;
+        proxy_http_version 1.1;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+    }
+}
+
+server {
+    listen 80;
+    server_name ${MERCHANT_SERVER_NAME};
+    root /usr/share/nginx/merchant-web;
+    index index.html;
+
+    client_max_body_size 20m;
+
+    location / {
+        try_files $uri $uri/ /apps/merchant-web/index.html;
+    }
+
+    location /merchant/ {
+        rewrite ^/merchant/(.*)$ /$1 break;
+        try_files $uri $uri/ /apps/merchant-web/index.html;
+    }
+
+    location /api/ {
+        proxy_pass http://campus_life_gateway;
+        proxy_http_version 1.1;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+        proxy_buffering off;
+        proxy_read_timeout 300s;
+    }
+
+    location /uploads/ {
+        proxy_pass http://campus_life_gateway;
+        proxy_http_version 1.1;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+    }
+}
+
+server {
+    listen 80;
+    server_name ${ADMIN_SERVER_NAME};
+    root /usr/share/nginx/admin-web;
+    index index.html;
+
+    client_max_body_size 20m;
+
+    location / {
+        try_files $uri $uri/ /apps/admin-web/index.html;
+    }
+
+    location /admin/ {
+        rewrite ^/admin/(.*)$ /$1 break;
+        try_files $uri $uri/ /apps/admin-web/index.html;
+    }
+
+    location /api/ {
+        proxy_pass http://campus_life_gateway;
+        proxy_http_version 1.1;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+        proxy_buffering off;
+        proxy_read_timeout 300s;
+    }
+
+    location /uploads/ {
+        proxy_pass http://campus_life_gateway;
+        proxy_http_version 1.1;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+    }
+}
+

@@ -1,0 +1,78 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="com.campus.campus_life_ai.ai.mapper.AiProviderConfigMapper">
+
+    <resultMap id="AiProviderConfigResultMap" type="com.campus.campus_life_ai.ai.entity.AiProviderConfig">
+        <id property="id" column="id"/>
+        <result property="providerCode" column="provider_code"/>
+        <result property="providerName" column="provider_name"/>
+        <result property="baseUrl" column="base_url"/>
+        <result property="apiKeyCipher" column="api_key_cipher"/>
+        <result property="defaultModelCode" column="default_model_code"/>
+        <result property="enabled" column="enabled"/>
+        <result property="timeoutMs" column="timeout_ms"/>
+        <result property="maxContextMessages" column="max_context_messages"/>
+        <result property="temperature" column="temperature"/>
+        <result property="topP" column="top_p"/>
+        <result property="maxOutputTokens" column="max_output_tokens"/>
+        <result property="systemPromptTemplate" column="system_prompt_template"/>
+        <result property="createdAt" column="created_at"/>
+        <result property="updatedAt" column="updated_at"/>
+    </resultMap>
+
+    <select id="findAll" resultMap="AiProviderConfigResultMap">
+        SELECT * FROM ai_provider_config
+        ORDER BY updated_at DESC, id DESC
+    </select>
+
+    <select id="findById" resultMap="AiProviderConfigResultMap">
+        SELECT * FROM ai_provider_config WHERE id = #{id} LIMIT 1
+    </select>
+
+    <select id="findByProviderCode" resultMap="AiProviderConfigResultMap">
+        SELECT * FROM ai_provider_config WHERE provider_code = #{providerCode} LIMIT 1
+    </select>
+
+    <select id="countByProviderCodeExcludingId" resultType="int">
+        SELECT COUNT(1)
+        FROM ai_provider_config
+        WHERE provider_code = #{providerCode}
+          AND (#{id} IS NULL OR id != #{id})
+    </select>
+
+    <insert id="insert" parameterType="com.campus.campus_life_ai.ai.entity.AiProviderConfig" useGeneratedKeys="true" keyProperty="id">
+        INSERT INTO ai_provider_config (
+            provider_code, provider_name, base_url, api_key_cipher, default_model_code, enabled, timeout_ms,
+            max_context_messages, temperature, top_p, max_output_tokens, system_prompt_template, created_at, updated_at
+        ) VALUES (
+            #{providerCode}, #{providerName}, #{baseUrl}, #{apiKeyCipher}, #{defaultModelCode}, #{enabled}, #{timeoutMs},
+            #{maxContextMessages}, #{temperature}, #{topP}, #{maxOutputTokens}, #{systemPromptTemplate}, #{createdAt}, #{updatedAt}
+        )
+    </insert>
+
+    <update id="update" parameterType="com.campus.campus_life_ai.ai.entity.AiProviderConfig">
+        UPDATE ai_provider_config
+        SET provider_code = #{providerCode},
+            provider_name = #{providerName},
+            base_url = #{baseUrl},
+            api_key_cipher = #{apiKeyCipher},
+            default_model_code = #{defaultModelCode},
+            enabled = #{enabled},
+            timeout_ms = #{timeoutMs},
+            max_context_messages = #{maxContextMessages},
+            temperature = #{temperature},
+            top_p = #{topP},
+            max_output_tokens = #{maxOutputTokens},
+            system_prompt_template = #{systemPromptTemplate},
+            updated_at = #{updatedAt}
+        WHERE id = #{id}
+    </update>
+
+    <delete id="deleteById">
+        DELETE FROM ai_provider_config WHERE id = #{id}
+    </delete>
+
+</mapper>

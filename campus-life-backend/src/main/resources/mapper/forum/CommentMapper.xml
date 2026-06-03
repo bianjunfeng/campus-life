@@ -1,0 +1,101 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="com.campus.campus_life_backend.modules.forum.mapper.CommentMapper">
+
+    <resultMap id="CommentResultMap" type="com.campus.campus_life_backend.modules.forum.entity.Comment">
+        <id property="id" column="id"/>
+        <result property="postId" column="post_id"/>
+        <result property="userId" column="user_id"/>
+        <result property="parentId" column="parent_id"/>
+        <result property="replyToUserId" column="reply_to_user_id"/>
+        <result property="content" column="content"/>
+        <result property="status" column="status"/>
+        <result property="likeCount" column="like_count"/>
+        <result property="createTime" column="create_time"/>
+        <result property="updateTime" column="update_time"/>
+        <result property="authorName" column="author_name"/>
+        <result property="authorAvatar" column="author_avatar"/>
+    </resultMap>
+
+    <insert id="insertComment" parameterType="com.campus.campus_life_backend.modules.forum.entity.Comment" useGeneratedKeys="true" keyProperty="id">
+        INSERT INTO `comment` (
+            post_id, user_id, parent_id, reply_to_user_id, content, status, like_count,
+            create_time, update_time
+        ) VALUES (
+            #{postId}, #{userId}, #{parentId}, #{replyToUserId}, #{content},
+            #{status}, #{likeCount}, NOW(), NOW()
+        )
+    </insert>
+
+    <select id="findById" resultMap="CommentResultMap">
+        SELECT * FROM `comment` WHERE id = #{id}
+    </select>
+
+    <select id="findByPostId" resultMap="CommentResultMap">
+        SELECT
+            c.*,
+            u.username AS author_name,
+            u.avatar_url AS author_avatar
+        FROM `comment` c
+        LEFT JOIN `user` u ON c.user_id = u.id
+        WHERE c.post_id = #{postId} AND c.status = 0
+        ORDER BY c.create_time ASC
+    </select>
+
+    <select id="countByPostId" resultType="long">
+        SELECT COUNT(1)
+        FROM `comment`
+        WHERE post_id = #{postId}
+          AND status = 0
+    </select>
+
+    <select id="findByUserId" resultMap="CommentResultMap">
+        SELECT * FROM `comment`
+        WHERE user_id = #{userId} AND status != 1
+        ORDER BY create_time DESC
+    </select>
+
+    <select id="findByParentId" resultMap="CommentResultMap">
+        SELECT * FROM `comment`
+        WHERE parent_id = #{parentId} AND status = 0
+        ORDER BY create_time ASC
+    </select>
+
+    <select id="findAllForAdmin" resultMap="CommentResultMap">
+        SELECT * FROM `comment`
+        ORDER BY create_time DESC
+    </select>
+
+    <update id="updateComment" parameterType="com.campus.campus_life_backend.modules.forum.entity.Comment">
+        UPDATE `comment`
+        SET
+            content = #{content},
+            status = #{status},
+            update_time = NOW()
+        WHERE id = #{id}
+    </update>
+
+    <update id="deleteComment">
+        UPDATE `comment` SET status = 1 WHERE id = #{id}
+    </update>
+
+    <update id="incrementLikeCount">
+        UPDATE `comment` SET like_count = like_count + 1 WHERE id = #{id}
+    </update>
+
+    <update id="decrementLikeCount">
+        UPDATE `comment` SET like_count = GREATEST(like_count - 1, 0) WHERE id = #{id}
+    </update>
+
+    <select id="countAllForAdmin" resultType="long">
+        SELECT COUNT(1) FROM `comment`
+    </select>
+
+    <select id="countByStatusForAdmin" resultType="long">
+        SELECT COUNT(1) FROM `comment` WHERE status = #{status}
+    </select>
+
+</mapper>

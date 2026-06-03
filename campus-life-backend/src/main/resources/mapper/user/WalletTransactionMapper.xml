@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="com.campus.campus_life_backend.modules.user.mapper.WalletTransactionMapper">
+
+    <insert id="insertExpenseTransaction">
+        INSERT INTO `wallet_transaction` (
+            user_id, biz_type, amount, balance_after, order_no, remark, create_time
+        ) VALUES (
+            #{userId}, 2, #{amount}, #{balanceAfter}, #{orderNo}, #{remark}, NOW()
+        )
+    </insert>
+
+    <insert id="insertRefundTransaction">
+        INSERT INTO `wallet_transaction` (
+            user_id, biz_type, amount, balance_after, order_no, remark, create_time
+        ) VALUES (
+            #{userId}, 3, #{amount}, #{balanceAfter}, #{orderNo}, #{remark}, NOW()
+        )
+    </insert>
+
+</mapper>
+

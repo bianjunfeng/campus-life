@@ -1,0 +1,871 @@
+/* 运营后台统一视觉主题：管理端与商家端共享 */
+.ops-layout,
+.admin-layout {
+  --ops-bg: #f3f5f8;
+  --ops-surface: #ffffff;
+  --ops-surface-muted: #f8fafc;
+  --ops-border: #dbe3ee;
+  --ops-border-soft: #e7edf5;
+  --ops-text: #172033;
+  --ops-text-muted: #667085;
+  --ops-text-weak: #98a2b3;
+  --ops-primary: #1677ff;
+  --ops-primary-hover: #0958d9;
+  --ops-primary-soft: #eef5ff;
+  --ops-accent: #1677ff;
+  --ops-accent-soft: #eef5ff;
+  --ops-success: #16a34a;
+  --ops-warning: #d97706;
+  --ops-danger: #dc2626;
+  --ops-radius: 8px;
+  --ops-radius-sm: 6px;
+  --ops-shadow: 0 1px 2px rgba(15, 23, 42, 0.04);
+  --admin-bg: var(--ops-bg);
+  --admin-surface: var(--ops-surface);
+  --admin-surface-soft: var(--ops-surface-muted);
+  --admin-border: var(--ops-border);
+  --admin-text: var(--ops-text);
+  --admin-text-soft: var(--ops-text-muted);
+  --admin-primary: var(--ops-primary);
+  --admin-danger: var(--ops-danger);
+  --admin-shadow: var(--ops-shadow);
+  --admin-radius: var(--ops-radius);
+  background: var(--ops-bg);
+  color: var(--ops-text);
+}
+
+.merchant-layout {
+  --ops-accent: #0f766e;
+  --ops-accent-soft: #e6fffb;
+}
+
+/* 共享后台骨架 */
+.ops-layout {
+  display: flex;
+  min-height: 100vh;
+}
+
+.ops-sidebar {
+  position: fixed;
+  inset: 0 auto 0 0;
+  z-index: 1000;
+  width: 240px;
+  background: var(--ops-surface);
+  border-right: 1px solid var(--ops-border);
+  overflow: hidden;
+  transition: width 0.2s ease, transform 0.2s ease;
+}
+
+.ops-sidebar.collapsed {
+  width: 64px;
+}
+
+.ops-sidebar-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  min-height: 64px;
+  padding: 12px 16px;
+  border-bottom: 1px solid var(--ops-border-soft);
+}
+
+.ops-brand {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+}
+
+.ops-brand-mark {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  border-radius: var(--ops-radius-sm);
+  background: var(--ops-accent-soft);
+  color: var(--ops-accent);
+  font-weight: 700;
+}
+
+.ops-brand strong,
+.ops-brand span {
+  display: block;
+  white-space: nowrap;
+}
+
+.ops-brand strong {
+  color: var(--ops-text);
+  font-size: 15px;
+  line-height: 1.25;
+}
+
+.ops-brand span {
+  margin-top: 2px;
+  color: var(--ops-text-muted);
+  font-size: 12px;
+  line-height: 1.25;
+}
+
+.ops-icon-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  border: 1px solid transparent;
+  border-radius: var(--ops-radius-sm);
+  background: transparent;
+  color: var(--ops-text-muted);
+}
+
+.ops-icon-button:hover {
+  border-color: var(--ops-border);
+  background: var(--ops-surface-muted);
+  color: var(--ops-primary);
+}
+
+.ops-icon-button svg {
+  width: 18px;
+  height: 18px;
+}
+
+.ops-sidebar-nav {
+  height: calc(100vh - 64px);
+  padding: 10px 8px;
+  overflow-y: auto;
+}
+
+.ops-nav-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-height: 40px;
+  margin: 2px 0;
+  padding: 0 12px;
+  border-radius: var(--ops-radius-sm);
+  color: #475467;
+  font-size: 14px;
+  font-weight: 500;
+  text-decoration: none;
+}
+
+.ops-nav-item:hover {
+  background: var(--ops-surface-muted);
+  color: var(--ops-primary);
+}
+
+.ops-nav-item.active {
+  background: var(--ops-accent-soft);
+  color: var(--ops-accent);
+  font-weight: 700;
+}
+
+.ops-nav-item svg {
+  width: 18px;
+  height: 18px;
+  flex: 0 0 auto;
+}
+
+.ops-main {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  min-width: 0;
+  margin-left: 240px;
+  transition: margin-left 0.2s ease;
+}
+
+.ops-sidebar.collapsed ~ .ops-main {
+  margin-left: 64px;
+}
+
+.ops-header {
+  position: sticky;
+  top: 0;
+  z-index: 100;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  min-height: 64px;
+  padding: 0 24px;
+  background: var(--ops-surface);
+  border-bottom: 1px solid var(--ops-border);
+}
+
+.ops-header-left,
+.ops-header-right {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-width: 0;
+}
+
+.ops-header-kicker {
+  margin: 0 0 2px;
+  color: var(--ops-text-muted);
+  font-size: 12px;
+  line-height: 1.2;
+}
+
+.ops-header h1 {
+  margin: 0;
+  color: var(--ops-text);
+  font-size: 18px;
+  font-weight: 700;
+  line-height: 1.35;
+}
+
+.ops-role-chip {
+  display: inline-flex;
+  align-items: center;
+  height: 28px;
+  padding: 0 10px;
+  border: 1px solid var(--ops-border);
+  border-radius: var(--ops-radius-sm);
+  background: var(--ops-surface-muted);
+  color: var(--ops-text-muted);
+  font-size: 12px;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.ops-secondary-button {
+  height: 32px;
+  padding: 0 12px;
+  border: 1px solid var(--ops-border);
+  border-radius: var(--ops-radius-sm);
+  background: var(--ops-surface);
+  color: var(--ops-text);
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.ops-secondary-button:hover {
+  border-color: var(--ops-primary);
+  color: var(--ops-primary);
+}
+
+.ops-workbench-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  height: 40px;
+  padding: 0 12px;
+  border: 1px solid var(--ops-border);
+  border-radius: var(--ops-radius-sm);
+  background: var(--ops-surface);
+  color: var(--ops-text);
+  font-size: 13px;
+  font-weight: 700;
+  line-height: 1;
+  white-space: nowrap;
+  cursor: pointer;
+  transition: border-color 0.15s ease, background 0.15s ease, color 0.15s ease;
+}
+
+.ops-workbench-button:hover {
+  border-color: var(--ops-primary);
+  background: var(--ops-primary-soft);
+  color: var(--ops-primary);
+}
+
+.ops-workbench-button svg {
+  width: 16px;
+  height: 16px;
+  flex: 0 0 auto;
+}
+
+.ops-content,
+.admin-layout .admin-content {
+  flex: 1;
+  min-width: 0;
+  background: var(--ops-bg);
+  color: var(--ops-text);
+}
+
+.ops-content {
+  padding: 20px 24px 28px;
+}
+
+/* 页面主体与标题区 */
+.ops-layout .ops-content :is(
+  .merchant-home-page,
+  .merchant-voucher-manage,
+  .merchant-refund-page,
+  .merchant-ai-page
+) {
+  min-height: auto;
+  padding: 0;
+  background: transparent;
+}
+
+.ops-layout .ops-content .page-header,
+.admin-layout .admin-content .page-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+  margin: 0 0 14px;
+}
+
+.ops-layout .ops-content :is(.page-header h1, .page-header h2),
+.admin-layout .admin-content :is(.page-header h1, .page-header h2) {
+  margin: 0;
+  color: var(--ops-text);
+  font-size: 20px;
+  font-weight: 700;
+  line-height: 1.35;
+}
+
+.ops-layout .ops-content :is(.subtitle, .eyebrow, .section-kicker),
+.admin-layout .admin-content :is(.subtitle, .eyebrow, .section-kicker) {
+  color: var(--ops-text-muted);
+}
+
+.ops-layout .ops-content .eyebrow,
+.admin-layout .admin-content .eyebrow {
+  margin: 0 0 4px;
+  font-size: 12px;
+  font-weight: 700;
+  line-height: 1.3;
+  text-transform: none;
+  letter-spacing: 0;
+}
+
+.ops-layout .ops-content .subtitle,
+.admin-layout .admin-content .subtitle {
+  margin: 6px 0 0;
+  font-size: 13px;
+  line-height: 1.5;
+}
+
+/* 卡片、面板、看板 */
+.ops-layout .ops-content :is(
+  .hero-panel,
+  .content-section,
+  .list-panel,
+  .detail-panel,
+  .voucher-list,
+  .agent-card,
+  .filter-section,
+  .filter-card,
+  .table-card,
+  .table-section,
+  .list-section,
+  .list-card,
+  .chart-card,
+  .pie-chart-card,
+  .reports-table,
+  .content-card,
+  .panel-card,
+  .overview-card
+),
+.admin-layout .admin-content :is(
+  .filter-section,
+  .filter-card,
+  .stats-section,
+  .stat-card,
+  .user-list,
+  .merchant-list,
+  .metric-card,
+  .mobile-card,
+  .table-card,
+  .table-section,
+  .list-section,
+  .list-card,
+  .chart-card,
+  .pie-chart-card,
+  .reports-table,
+  .content-card,
+  .section-card,
+  .profile-card,
+  .detail-card,
+  .agent-card,
+  .project-header,
+  .panel-card,
+  .overview-card
+) {
+  background: var(--ops-surface);
+  border: 1px solid var(--ops-border);
+  border-radius: var(--ops-radius);
+  box-shadow: var(--ops-shadow);
+}
+
+.ops-layout .ops-content :is(
+  .content-section,
+  .list-panel,
+  .detail-panel,
+  .voucher-list,
+  .filter-section
+),
+.admin-layout .admin-content :is(
+  .filter-section,
+  .filter-card,
+  .stat-card,
+  .metric-card,
+  .mobile-card,
+  .table-card,
+  .table-section,
+  .list-section,
+  .user-list,
+  .merchant-list,
+  .content-card,
+  .section-card,
+  .profile-card,
+  .detail-card,
+  .agent-card,
+  .project-header,
+  .panel-card
+) {
+  padding: 16px;
+}
+
+.ops-layout .ops-content .hero-panel {
+  display: grid;
+  grid-template-columns: minmax(0, 1.2fr) minmax(320px, 0.8fr);
+  gap: 16px;
+  padding: 16px;
+  margin-bottom: 16px;
+}
+
+.ops-layout .ops-content :is(.stats-grid, .action-grid, .content-columns) {
+  gap: 12px;
+}
+
+.ops-layout .ops-content :is(.stat-card, .action-card, .list-item, .detail-card, .refund-item, .timeline-item) {
+  border: 1px solid var(--ops-border-soft);
+  border-radius: var(--ops-radius);
+  background: var(--ops-surface-muted);
+  box-shadow: none;
+}
+
+.ops-layout .ops-content .stat-card {
+  padding: 14px;
+}
+
+.ops-layout .ops-content .stat-card.accent,
+.ops-layout .ops-content .detail-hero {
+  border-color: var(--ops-border);
+  background: var(--ops-surface);
+  color: var(--ops-text);
+}
+
+.ops-layout .ops-content .stat-card strong {
+  font-size: 24px;
+  line-height: 1.2;
+}
+
+.ops-layout .ops-content .detail-hero strong {
+  color: var(--ops-accent);
+}
+
+.ops-layout .ops-content .detail-desc {
+  color: var(--ops-text-muted);
+}
+
+.ops-layout .ops-content .merchant-meta div {
+  border: 1px solid var(--ops-border-soft);
+  border-radius: var(--ops-radius);
+  background: var(--ops-surface-muted);
+}
+
+/* 筛选栏、表单、按钮 */
+.ops-layout .ops-content .filter-section,
+.admin-layout .admin-content :is(.filter-section, .filter-card) {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 16px;
+}
+
+.ops-layout .ops-content :is(input, select, textarea),
+.admin-layout .admin-content :is(input, select, textarea) {
+  min-height: 36px;
+  border: 1px solid #cfd8e6;
+  border-radius: var(--ops-radius-sm);
+  background: #ffffff;
+  color: var(--ops-text);
+  font-size: 14px;
+}
+
+.ops-layout .ops-content :is(input, select, textarea):focus,
+.admin-layout .admin-content :is(input, select, textarea):focus {
+  outline: none;
+  border-color: var(--ops-primary);
+  box-shadow: 0 0 0 2px rgba(22, 119, 255, 0.12);
+}
+
+.ops-layout .ops-content :is(.btn, .ghost-button, .ghost-btn, .retry-button, .section-link, .primary-btn, .secondary-btn),
+.admin-layout .admin-content .btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 34px;
+  padding: 0 12px;
+  border: 1px solid transparent;
+  border-radius: var(--ops-radius-sm);
+  font-size: 13px;
+  font-weight: 600;
+  line-height: 1;
+  text-decoration: none;
+  transition: border-color 0.15s ease, background 0.15s ease, color 0.15s ease;
+}
+
+.admin-layout .admin-content :is(.btn-secondary, .btn-reset, .btn-refresh, .primary-btn, .secondary-btn, .action-btn, .show-more-btn) {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 34px;
+  padding: 0 12px;
+  border: 1px solid var(--ops-border);
+  border-radius: var(--ops-radius-sm);
+  background: var(--ops-surface);
+  color: var(--ops-text);
+  font-size: 13px;
+  font-weight: 600;
+  line-height: 1;
+  text-decoration: none;
+  transition: border-color 0.15s ease, background 0.15s ease, color 0.15s ease;
+}
+
+.ops-layout .ops-content :is(.btn-primary, .primary-btn),
+.admin-layout .admin-content :is(.btn-primary, .primary-btn) {
+  background: var(--ops-primary);
+  border-color: var(--ops-primary);
+  color: #ffffff;
+}
+
+.ops-layout .ops-content :is(.btn-primary, .primary-btn):hover,
+.admin-layout .admin-content :is(.btn-primary, .primary-btn):hover {
+  background: var(--ops-primary-hover);
+  border-color: var(--ops-primary-hover);
+}
+
+.ops-layout .ops-content :is(.ghost-button, .ghost-btn, .retry-button, .section-link, .btn-secondary, .secondary-btn),
+.admin-layout .admin-content :is(.btn-secondary, .btn-reset, .btn-refresh, .secondary-btn, .action-btn, .show-more-btn) {
+  background: var(--ops-surface);
+  border-color: var(--ops-border);
+  color: var(--ops-text);
+}
+
+.ops-layout .ops-content :is(.ghost-button, .ghost-btn, .retry-button, .section-link, .btn-secondary, .secondary-btn):hover,
+.admin-layout .admin-content :is(.btn-secondary, .btn-reset, .btn-refresh, .secondary-btn, .action-btn, .show-more-btn):hover {
+  border-color: var(--ops-primary);
+  color: var(--ops-primary);
+}
+
+.ops-layout .ops-content :is(.btn-danger),
+.admin-layout .admin-content :is(.btn-danger, .reject) {
+  background: #fff1f2;
+  border-color: #fecdd3;
+  color: var(--ops-danger);
+}
+
+.ops-layout .ops-content :is(.btn-success),
+.admin-layout .admin-content :is(.btn-success, .approve) {
+  background: #ecfdf3;
+  border-color: #bbf7d0;
+  color: var(--ops-success);
+}
+
+.ops-layout .ops-content :is(.btn-edit),
+.admin-layout .admin-content :is(.btn-edit, .view, .search, .process) {
+  background: var(--ops-primary-soft);
+  border-color: #bfdbfe;
+  color: var(--ops-primary);
+}
+
+.ops-layout .ops-content :is(.btn-warning),
+.admin-layout .admin-content :is(.btn-warning, .ignore) {
+  background: #fffbeb;
+  border-color: #fde68a;
+  color: var(--ops-warning);
+}
+
+.ops-layout .ops-content :is(.btn:disabled, .ghost-button:disabled, .primary-btn:disabled, .secondary-btn:disabled),
+.admin-layout .admin-content :is(.btn:disabled, .btn-secondary:disabled, .primary-btn:disabled, .secondary-btn:disabled) {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+/* 表格 */
+.ops-layout .ops-content .data-table,
+.admin-layout .admin-content .data-table {
+  width: 100%;
+  border-collapse: collapse;
+  background: #ffffff;
+}
+
+.ops-layout .ops-content .data-table th,
+.admin-layout .admin-content .data-table th {
+  background: var(--ops-surface-muted);
+  color: #344054;
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.ops-layout .ops-content .data-table :is(th, td),
+.admin-layout .admin-content .data-table :is(th, td) {
+  min-height: 44px;
+  padding: 10px 12px;
+  border-bottom: 1px solid var(--ops-border-soft);
+  color: var(--ops-text);
+  vertical-align: middle;
+}
+
+.ops-layout .ops-content .data-table tbody tr:hover,
+.admin-layout .admin-content .data-table tbody tr:hover {
+  background: #f9fbff;
+}
+
+.ops-layout .ops-content .action-cell,
+.admin-layout .admin-content .action-cell {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.ops-layout .ops-content .pagination,
+.admin-layout .admin-content .pagination {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 10px;
+  margin-top: 14px;
+  padding-top: 14px;
+  border-top: 1px solid var(--ops-border-soft);
+  color: var(--ops-text-muted);
+  font-size: 13px;
+}
+
+.ops-layout .ops-content .pagination :is(button, .page-btn),
+.admin-layout .admin-content .pagination :is(button, .page-btn) {
+  min-height: 32px;
+  padding: 0 12px;
+  border: 1px solid var(--ops-border);
+  border-radius: var(--ops-radius-sm);
+  background: #ffffff;
+  color: var(--ops-text);
+}
+
+.ops-layout .ops-content .pagination :is(button, .page-btn):hover:not(:disabled),
+.admin-layout .admin-content .pagination :is(button, .page-btn):hover:not(:disabled) {
+  border-color: var(--ops-primary);
+  color: var(--ops-primary);
+}
+
+/* 标签与状态 */
+.ops-layout .ops-content :is(.status-badge, .status-chip, .type-badge, .summary-badge),
+.admin-layout .admin-content :is(.status-badge, .status-chip, .type-badge, .role-badge) {
+  display: inline-flex;
+  align-items: center;
+  min-height: 24px;
+  padding: 0 8px;
+  border-radius: var(--ops-radius-sm);
+  font-size: 12px;
+  font-weight: 700;
+  line-height: 1;
+  white-space: nowrap;
+}
+
+.ops-layout .ops-content :is(.status-online, .status-success, .type-group),
+.admin-layout .admin-content :is(.status-online, .status-success, .role-admin) {
+  background: #ecfdf3;
+  color: #067647;
+}
+
+.ops-layout .ops-content :is(.status-offline, .status-danger, .type-seckill),
+.admin-layout .admin-content :is(.status-offline, .status-danger) {
+  background: #fff1f3;
+  color: #c01048;
+}
+
+.ops-layout .ops-content .summary-badge,
+.ops-layout .ops-content .status-chip {
+  background: var(--ops-accent-soft);
+  color: var(--ops-accent);
+}
+
+/* 弹窗、抽屉、状态态 */
+.ops-layout .ops-content :is(.dialog, .modal-content, .popup-content, .drawer-panel),
+.admin-layout .admin-content :is(.dialog, .modal-content, .popup-content, .drawer-panel) {
+  border: 1px solid var(--ops-border);
+  border-radius: var(--ops-radius);
+  background: var(--ops-surface);
+  box-shadow: 0 16px 40px rgba(15, 23, 42, 0.16);
+}
+
+.ops-layout .ops-content .dialog-overlay,
+.admin-layout .admin-content .dialog-overlay {
+  background: rgba(15, 23, 42, 0.42);
+}
+
+.ops-layout .ops-content :is(.page-state, .state-card, .empty-state, .empty-tip, .error-tip),
+.admin-layout .admin-content :is(.state-tip, .empty-tip, .error-tip, .empty-state, .state-card, .state-text, .state-block, .state, .notification-empty, .empty-row) {
+  border: 1px solid var(--ops-border);
+  border-radius: var(--ops-radius);
+  background: var(--ops-surface);
+  color: var(--ops-text-muted);
+  box-shadow: none;
+}
+
+.ops-layout .ops-content :is(.page-state.error, .state-card.error),
+.admin-layout .admin-content :is(.error-tip, .state-card.error, .state-text.error, .state.error) {
+  border-color: #fecdd3;
+  background: #fff1f3;
+  color: #c01048;
+}
+
+/* 管理端既有布局收敛 */
+.admin-layout .admin-content > * {
+  color: var(--ops-text);
+}
+
+.admin-layout .admin-content {
+  background: var(--ops-bg);
+}
+
+.admin-layout .admin-content .filter-item label {
+  color: var(--ops-text-muted);
+  font-weight: 600;
+}
+
+.admin-layout .admin-content .reports-table th {
+  background: var(--ops-surface-muted);
+  color: #344054;
+}
+
+.admin-layout .admin-content .reports-table :is(th, td) {
+  border-bottom: 1px solid var(--ops-border-soft);
+}
+
+.admin-layout .admin-content .project-header {
+  color: var(--ops-text);
+  margin-bottom: 16px;
+}
+
+.admin-layout .admin-content .project-title,
+.admin-layout .admin-content .project-description,
+.admin-layout .admin-content .version-info {
+  text-align: left;
+}
+
+.admin-layout .admin-content .project-title {
+  font-size: 22px;
+  line-height: 1.35;
+}
+
+.admin-layout .admin-content .project-description {
+  max-width: 920px;
+  color: var(--ops-text-muted);
+  font-size: 14px;
+  line-height: 1.7;
+}
+
+.admin-layout .admin-content .version-value {
+  color: var(--ops-primary);
+}
+
+.admin-layout .admin-content .project-actions {
+  justify-content: flex-start;
+  gap: 10px;
+}
+
+.admin-layout .admin-content :is(.metric-card, .stat-card, .overview-card):hover {
+  transform: none;
+  box-shadow: var(--ops-shadow);
+}
+
+.admin-layout .admin-content .metric-icon {
+  width: 42px;
+  height: 42px;
+  border-radius: var(--ops-radius-sm);
+}
+
+.admin-layout .admin-content .metric-icon svg {
+  width: 22px;
+  height: 22px;
+}
+
+.admin-layout .admin-content :is(.metric-value, .stat-value) {
+  color: var(--ops-text);
+  font-size: 24px;
+  line-height: 1.2;
+}
+
+.admin-layout .admin-content :is(.metric-label, .stat-label) {
+  color: var(--ops-text-muted);
+}
+
+.admin-layout .admin-content :is(.coupon-item, .server-item, .tech-tag, .changelog-item) {
+  border-color: var(--ops-border-soft);
+  border-radius: var(--ops-radius-sm);
+  background: var(--ops-surface-muted);
+}
+
+@media (max-width: 768px) {
+  .ops-sidebar {
+    width: 280px;
+    transform: translateX(-100%);
+  }
+
+  .ops-sidebar.mobile-visible {
+    transform: translateX(0);
+  }
+
+  .ops-sidebar.mobile-hidden {
+    transform: translateX(-100%);
+  }
+
+  .ops-sidebar.collapsed {
+    width: 280px;
+  }
+
+  .ops-sidebar-overlay {
+    position: fixed;
+    inset: 0;
+    z-index: 999;
+    background: rgba(15, 23, 42, 0.44);
+  }
+
+  .ops-main,
+  .ops-sidebar.collapsed ~ .ops-main {
+    width: 100%;
+    margin-left: 0;
+  }
+
+  .ops-header {
+    min-height: 58px;
+    padding: 0 14px;
+  }
+
+  .ops-header-right {
+    display: none;
+  }
+
+  .ops-workbench-button {
+    width: 40px;
+    padding: 0;
+  }
+
+  .ops-workbench-button span {
+    display: none;
+  }
+
+  .ops-content {
+    padding: 14px;
+  }
+
+  .ops-layout .ops-content .hero-panel {
+    grid-template-columns: 1fr;
+  }
+
+  .ops-layout .ops-content :is(.page-header, .section-heading, .panel-heading, .list-item) {
+    flex-direction: column;
+    align-items: stretch;
+  }
+}

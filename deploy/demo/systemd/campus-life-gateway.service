@@ -1,0 +1,17 @@
+[Unit]
+Description=Campus Life Gateway
+After=network.target docker.service campus-life-backend.service campus-life-ai.service
+Requires=docker.service
+
+[Service]
+Type=simple
+User=campus
+WorkingDirectory=/opt/campus-life/gateway
+EnvironmentFile=/opt/campus-life/.env
+ExecStart=/usr/bin/java -jar /opt/campus-life/gateway/campus-life-gateway.jar --spring.config.additional-location=file:/opt/campus-life/gateway/config/
+Restart=always
+RestartSec=5
+SuccessExitStatus=143
+
+[Install]
+WantedBy=multi-user.target

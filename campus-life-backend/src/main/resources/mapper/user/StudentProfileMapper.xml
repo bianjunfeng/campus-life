@@ -1,0 +1,67 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="com.campus.campus_life_backend.modules.user.mapper.StudentProfileMapper">
+
+    <resultMap id="StudentProfileResultMap" type="com.campus.campus_life_backend.modules.user.entity.StudentProfile">
+        <id property="userId" column="user_id"/>
+        <result property="realName" column="real_name"/>
+        <result property="school" column="school"/>
+        <result property="college" column="college"/>
+        <result property="major" column="major"/>
+        <result property="grade" column="grade"/>
+        <result property="className" column="class_name"/>
+        <result property="studentNo" column="student_no"/>
+        <result property="status" column="status"/>
+        <result property="createTime" column="create_time"/>
+        <result property="updateTime" column="update_time"/>
+    </resultMap>
+
+    <insert id="insertStudentProfile" parameterType="com.campus.campus_life_backend.modules.user.entity.StudentProfile">
+        INSERT INTO `student_profile` (
+            user_id, real_name, school, college, major, grade, class_name,
+            student_no, status, create_time, update_time
+        ) VALUES (
+            #{userId}, #{realName}, #{school}, #{college}, #{major}, #{grade},
+            #{className}, #{studentNo}, #{status}, NOW(), NOW()
+        )
+    </insert>
+
+    <select id="findByUserId" resultMap="StudentProfileResultMap">
+        SELECT * FROM `student_profile` WHERE user_id = #{userId} AND status = 1
+    </select>
+
+    <select id="findByUserIdAllStatus" resultMap="StudentProfileResultMap">
+        SELECT * FROM `student_profile` WHERE user_id = #{userId}
+    </select>
+
+    <select id="findBySchoolAndStudentNo" resultMap="StudentProfileResultMap">
+        SELECT * FROM `student_profile`
+        WHERE school = #{school} AND student_no = #{studentNo} AND status = 1
+        LIMIT 1
+    </select>
+
+    <update id="updateStudentProfile" parameterType="com.campus.campus_life_backend.modules.user.entity.StudentProfile">
+        UPDATE `student_profile`
+        SET
+            real_name = #{realName},
+            school = #{school},
+            college = #{college},
+            major = #{major},
+            grade = #{grade},
+            class_name = #{className},
+            student_no = #{studentNo},
+            update_time = NOW()
+        WHERE user_id = #{userId}
+    </update>
+
+    <update id="updateStatus">
+        UPDATE `student_profile`
+        SET status = #{status}, update_time = NOW()
+        WHERE user_id = #{userId}
+    </update>
+
+</mapper>
+

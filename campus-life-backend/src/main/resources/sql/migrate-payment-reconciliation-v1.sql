@@ -1,0 +1,32 @@
+SET NAMES utf8mb4;
+
+CREATE TABLE IF NOT EXISTS `payment_reconciliation_issue` (
+    `id` BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+    `issue_key` VARCHAR(128) NOT NULL COMMENT '差错唯一键',
+    `biz_type` VARCHAR(32) NOT NULL COMMENT '业务类型',
+    `payment_no` VARCHAR(64) NULL COMMENT '支付单号',
+    `biz_order_no` VARCHAR(64) NOT NULL COMMENT '业务订单号',
+    `user_id` BIGINT UNSIGNED NULL COMMENT '用户ID',
+    `channel` VARCHAR(20) NULL COMMENT '支付渠道',
+    `issue_type` VARCHAR(64) NOT NULL COMMENT '差错类型',
+    `issue_level` VARCHAR(16) NOT NULL DEFAULT 'WARN' COMMENT '差错级别: INFO/WARN/CRITICAL',
+    `issue_status` VARCHAR(16) NOT NULL DEFAULT 'OPEN' COMMENT '差错状态: OPEN/RESOLVED',
+    `issue_message` VARCHAR(255) NOT NULL COMMENT '差错描述',
+    `payment_order_status` VARCHAR(32) NULL COMMENT '支付单状态',
+    `voucher_order_status` INT NULL COMMENT '券订单状态',
+    `voucher_payment_status` INT NULL COMMENT '券订单支付状态',
+    `payment_amount` DECIMAL(12,2) NULL COMMENT '支付金额',
+    `recorded_refunded_amount` DECIMAL(12,2) NULL COMMENT '支付单记录退款金额',
+    `actual_refunded_amount` DECIMAL(12,2) NULL COMMENT '成功退款累计金额',
+    `last_checked_time` DATETIME NOT NULL COMMENT '最后扫描时间',
+    `resolved_time` DATETIME NULL COMMENT '处理完成时间',
+    `resolved_by` BIGINT UNSIGNED NULL COMMENT '处理人ID',
+    `resolve_note` VARCHAR(255) NULL COMMENT '处理备注',
+    `create_time` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    `update_time` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    PRIMARY KEY (`id`),
+    UNIQUE KEY `uk_payment_reconciliation_issue_key` (`issue_key`),
+    KEY `idx_payment_reconciliation_status_type` (`issue_status`, `issue_type`),
+    KEY `idx_payment_reconciliation_biz_order_no` (`biz_order_no`),
+    KEY `idx_payment_reconciliation_payment_no` (`payment_no`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='支付对账差错单';

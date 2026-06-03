@@ -1,0 +1,72 @@
+groups:
+  - name: campus-life-kafka-reliability
+    rules:
+      - alert: CampusEventOutboxBacklogHigh
+        expr: sum(campus_event_outbox_records{status=~"NEW|FAILED|SENDING"}) > 100
+        for: 10m
+        labels:
+          severity: warning
+          service: campus-life-backend
+        annotations:
+          summary: "Campus Life event outbox backlog is high"
+          description: "Outbox has more than 100 pending records for 10 minutes. Check campus_event_outbox_records by channel and status."
+
+      - alert: CampusEventOutboxOldestPendingTooOld
+        expr: max(campus_event_outbox_pending_oldest_age_seconds) > 300
+        for: 5m
+        labels:
+          severity: critical
+          service: campus-life-backend
+        annotations:
+          summary: "Campus Life outbox pending event is too old"
+          description: "The oldest pending outbox event is older than 5 minutes. Kafka publishing may be stuck."
+
+      - alert: CampusKafkaDltNewRecords
+        expr: sum(campus_event_failure_records{status="NEW"}) > 0
+        for: 5m
+        labels:
+          severity: warning
+          service: campus-life-backend
+        annotations:
+          summary: "Campus Life Kafka DLT has unreplayed records"
+          description: "There are unreplayed failure records. Open /api/admin/kafka/failures and replay or ignore them."
+
+      - alert: CampusKafkaConsumerLagHigh
+        expr: max(campus_kafka_consumer_lag_total_records) > 1000
+        for: 10m
+        labels:
+          severity: warning
+          service: campus-life-backend
+        annotations:
+          summary: "Campus Life Kafka consumer lag is high"
+          description: "A watched consumer group has more than 1000 records of lag for 10 minutes."
+
+      - alert: CampusKafkaConsumerLagStalled
+        expr: max(campus_kafka_consumer_lag_total_records) > 0 and changes(campus_kafka_consumer_lag_total_records[10m]) == 0
+        for: 10m
+        labels:
+          severity: warning
+          service: campus-life-backend
+        annotations:
+          summary: "Campus Life Kafka consumer lag is not moving"
+          description: "Consumer lag is non-zero and unchanged for 10 minutes. Check consumer errors and group membership."
+
+      - alert: CampusEventReliabilityDbMetricsScrapeFailed
+        expr: campus_event_reliability_db_scrape_success == 0
+        for: 5m
+        labels:
+          severity: warning
+          service: campus-life-backend
+        annotations:
+          summary: "Campus Life event reliability DB metrics refresh failed"
+          description: "The application could not refresh outbox/failure metrics from MySQL."
+
+      - alert: CampusKafkaLagMetricsScrapeFailed
+        expr: campus_kafka_consumer_lag_scrape_success == 0
+        for: 5m
+        labels:
+          severity: warning
+          service: campus-life-backend
+        annotations:
+          summary: "Campus Life Kafka lag metrics refresh failed"
+          description: "The application could not refresh Kafka consumer lag metrics. Check Kafka bootstrap connectivity and ACLs."

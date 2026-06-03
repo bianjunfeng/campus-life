@@ -1,0 +1,146 @@
+server:
+  port: 8083
+
+spring:
+  application:
+    name: campus-life-ai
+  profiles:
+    active: ${SPRING_PROFILES_ACTIVE:local}
+  datasource:
+    url: ${SPRING_DATASOURCE_URL:jdbc:mysql://8.130.80.46:3306/campus_life_ai?useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=Asia/Shanghai&characterEncoding=utf8}
+    username: ${SPRING_DATASOURCE_USERNAME:root}
+    password: ${SPRING_DATASOURCE_PASSWORD:}
+    driver-class-name: com.mysql.cj.jdbc.Driver
+  data:
+    redis:
+      host: ${SPRING_REDIS_HOST:127.0.0.1}
+      port: ${SPRING_REDIS_PORT:6379}
+      password: ${SPRING_REDIS_PASSWORD:}
+      timeout: ${SPRING_REDIS_TIMEOUT:3000}
+  jackson:
+    time-zone: Asia/Shanghai
+    date-format: yyyy-MM-dd HH:mm:ss
+
+mybatis:
+  mapper-locations: classpath:mapper/**/*.xml
+  configuration:
+    map-underscore-to-camel-case: true
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,prometheus
+  endpoint:
+    health:
+      show-details: ${MANAGEMENT_HEALTH_SHOW_DETAILS:always}
+  metrics:
+    tags:
+      application: ${spring.application.name}
+
+# JWT 配置
+jwt:
+  secret: ${JWT_SECRET:campus-life-secret-key-2025-please-change-in-production}
+  expiration: 604800000  # 访问令牌过期时间（毫秒），默认7天
+  refresh-expiration: 2592000000  # 刷新令牌过期时间（毫秒），默认30天
+
+platform:
+  user-service:
+    base-url: ${PLATFORM_USER_SERVICE_BASE_URL:http://127.0.0.1:8080}
+
+ai:
+  security:
+    api-key-encryption-secret: ${AI_API_KEY_ENCRYPTION_SECRET:}
+  default-provider-code: ${AI_DEFAULT_PROVIDER_CODE:openai-compatible}
+  default-model-code: ${AI_DEFAULT_MODEL_CODE:qwen-plus}
+  default-assistant-type: ${AI_DEFAULT_ASSISTANT_TYPE:general}
+  system-prompt: ${AI_SYSTEM_PROMPT:你是校园生活平台的 AI 助手，回答要准确、简洁，优先基于平台已知信息，不要编造不存在的平台规则。}
+  max-context-messages: ${AI_MAX_CONTEXT_MESSAGES:20}
+  temperature: ${AI_TEMPERATURE:0.7}
+  max-output-tokens: ${AI_MAX_OUTPUT_TOKENS:1024}
+  gateway:
+    enabled: ${AI_GATEWAY_ENABLED:true}
+    max-input-chars: ${AI_GATEWAY_MAX_INPUT_CHARS:32000}
+    health-failure-threshold: ${AI_GATEWAY_HEALTH_FAILURE_THRESHOLD:2}
+    health-cooldown-ms: ${AI_GATEWAY_HEALTH_COOLDOWN_MS:30000}
+  memory:
+    client: ${AI_MEMORY_CLIENT:spring-ai}
+  tools:
+    enabled: ${AI_TOOLS_ENABLED:true}
+    ops-enabled: ${AI_OPS_TOOLS_ENABLED:true}
+  openai-compatible:
+    enabled: ${AI_OPENAI_COMPATIBLE_ENABLED:true}
+    provider-code: ${AI_OPENAI_COMPATIBLE_PROVIDER_CODE:openai-compatible}
+    provider-name: ${AI_OPENAI_COMPATIBLE_PROVIDER_NAME:Qwen}
+    base-url: ${AI_OPENAI_COMPATIBLE_BASE_URL:https://dashscope.aliyuncs.com/compatible-mode/v1}
+    api-key: ${AI_OPENAI_COMPATIBLE_API_KEY:${DASHSCOPE_API_KEY:}}
+    model: ${AI_OPENAI_COMPATIBLE_MODEL:qwen-plus}
+    connect-timeout-ms: ${AI_OPENAI_COMPATIBLE_CONNECT_TIMEOUT_MS:5000}
+    read-timeout-ms: ${AI_OPENAI_COMPATIBLE_READ_TIMEOUT_MS:30000}
+
+knowledge:
+  storage:
+    root-path: ${AI_KNOWLEDGE_STORAGE_PATH:./uploads/knowledge}
+    allowed-extensions: ${AI_KNOWLEDGE_ALLOWED_EXTENSIONS:txt,md}
+    max-file-size-bytes: ${AI_KNOWLEDGE_MAX_FILE_SIZE_BYTES:10485760}
+    max-user-storage-bytes: ${AI_KNOWLEDGE_MAX_USER_STORAGE_BYTES:209715200}
+    max-user-bases: ${AI_KNOWLEDGE_MAX_USER_BASES:20}
+    chunk-max-size: ${AI_KNOWLEDGE_CHUNK_MAX_SIZE:800}
+    chunk-overlap: ${AI_KNOWLEDGE_CHUNK_OVERLAP:100}
+  embedding:
+    client: ${AI_KNOWLEDGE_EMBEDDING_CLIENT:spring-ai}
+    base-url: ${AI_KNOWLEDGE_EMBEDDING_BASE_URL:https://dashscope.aliyuncs.com/compatible-mode/v1}
+    api-key: ${AI_KNOWLEDGE_EMBEDDING_API_KEY:${AI_OPENAI_COMPATIBLE_API_KEY:${DASHSCOPE_API_KEY:}}}
+    model: ${AI_KNOWLEDGE_EMBEDDING_MODEL:text-embedding-v4}
+    dimensions: ${AI_KNOWLEDGE_EMBEDDING_DIMENSIONS:1024}
+    max-batch-size: ${AI_KNOWLEDGE_EMBEDDING_MAX_BATCH_SIZE:10}
+    connect-timeout-ms: ${AI_KNOWLEDGE_EMBEDDING_CONNECT_TIMEOUT_MS:5000}
+    read-timeout-ms: ${AI_KNOWLEDGE_EMBEDDING_READ_TIMEOUT_MS:30000}
+  vector:
+    client: ${AI_KNOWLEDGE_VECTOR_CLIENT:spring-ai}
+    enabled: ${AI_KNOWLEDGE_VECTOR_ENABLED:true}
+    fallback-keyword-search: ${AI_KNOWLEDGE_VECTOR_FALLBACK_KEYWORD_SEARCH:true}
+    uri: ${MILVUS_URI:http://localhost:19530}
+    token: ${MILVUS_TOKEN:}
+    username: ${MILVUS_USERNAME:}
+    password: ${MILVUS_PASSWORD:}
+    database-name: ${MILVUS_DATABASE:default}
+    collection-name: ${MILVUS_COLLECTION:campus_life_knowledge_chunks}
+    vector-field-name: ${MILVUS_VECTOR_FIELD:embedding}
+    metric-type: ${MILVUS_METRIC_TYPE:COSINE}
+    connect-timeout-ms: ${MILVUS_CONNECT_TIMEOUT_MS:5000}
+    rpc-deadline-ms: ${MILVUS_RPC_DEADLINE_MS:30000}
+
+ops:
+  analysis-log-limit: ${OPS_ANALYSIS_LOG_LIMIT:12}
+  prometheus:
+    enabled: ${PROMETHEUS_ENABLED:true}
+    base-url: ${PROMETHEUS_BASE_URL:}
+    bearer-token: ${PROMETHEUS_BEARER_TOKEN:}
+    timeout-seconds: ${PROMETHEUS_TIMEOUT_SECONDS:10}
+  logs:
+    provider: ${OPS_LOG_PROVIDER:cls}
+    default-region: ${CLS_DEFAULT_REGION:ap-guangzhou}
+    cls:
+      enabled: ${CLS_ENABLED:true}
+      endpoint: ${CLS_ENDPOINT:cls.tencentcloudapi.com}
+      region: ${CLS_REGION:${CLS_DEFAULT_REGION:ap-guangzhou}}
+      secret-id: ${CLS_SECRET_ID:}
+      secret-key: ${CLS_SECRET_KEY:}
+      timeout-seconds: ${CLS_TIMEOUT_SECONDS:10}
+      lookback-minutes: ${CLS_LOOKBACK_MINUTES:30}
+      topics:
+        application-logs: ${CLS_TOPIC_APPLICATION_LOGS:}
+        database-slow-query: ${CLS_TOPIC_DATABASE_SLOW_QUERY:}
+        system-events: ${CLS_TOPIC_SYSTEM_EVENTS:}
+        system-metrics: ${CLS_TOPIC_SYSTEM_METRICS:}
+  service-probes:
+    - code: ai-service
+      name: 校园 AI 服务
+      health-url: ${OPS_AI_HEALTH_URL:http://127.0.0.1:8083/actuator/health}
+    - code: campus-backend
+      name: 校园业务后端
+      health-url: ${OPS_BACKEND_HEALTH_URL:http://127.0.0.1:8080/actuator/health}
+    - code: api-gateway
+      name: 校园 API 网关
+      health-url: ${OPS_GATEWAY_HEALTH_URL:http://127.0.0.1:8090/actuator/health}

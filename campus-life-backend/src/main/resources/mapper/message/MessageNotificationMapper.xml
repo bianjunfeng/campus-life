@@ -1,0 +1,105 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="com.campus.campus_life_backend.modules.message.mapper.MessageNotificationMapper">
+
+    <resultMap id="NotificationItemResultMap" type="com.campus.campus_life_backend.modules.message.dto.NotificationItemDTO">
+        <result property="id" column="id"/>
+        <result property="type" column="type"/>
+        <result property="actorUserId" column="actor_user_id"/>
+        <result property="actorUserName" column="actor_user_name"/>
+        <result property="actorUserAvatar" column="actor_user_avatar"/>
+        <result property="message" column="message"/>
+        <result property="createTime" column="create_time"/>
+        <result property="postId" column="post_id"/>
+        <result property="unread" column="unread"/>
+    </resultMap>
+
+    <select id="findLikeAndFavoriteNotifications" resultMap="NotificationItemResultMap">
+        SELECT
+            CONCAT('sys_', sn.id) AS id,
+            sn.type AS type,
+            sn.actor_user_id AS actor_user_id,
+            u.username AS actor_user_name,
+            u.avatar_url AS actor_user_avatar,
+            sn.message AS message,
+            sn.create_time AS create_time,
+            sn.post_id AS post_id,
+            sn.unread AS unread
+        FROM system_notification sn
+                 INNER JOIN `user` u ON u.id = sn.actor_user_id
+        WHERE sn.target_user_id = #{userId}
+          AND sn.type IN ('LIKE', 'FAVORITE', 'LIKE_COMMENT')
+        ORDER BY sn.create_time DESC
+        LIMIT 100
+    </select>
+
+    <select id="findCommentNotifications" resultMap="NotificationItemResultMap">
+        SELECT
+            CONCAT('sys_', sn.id) AS id,
+            sn.type AS type,
+            sn.actor_user_id AS actor_user_id,
+            u.username AS actor_user_name,
+            u.avatar_url AS actor_user_avatar,
+            sn.message AS message,
+            sn.create_time AS create_time,
+            sn.post_id AS post_id,
+            sn.unread AS unread
+        FROM system_notification sn
+                 INNER JOIN `user` u ON u.id = sn.actor_user_id
+        WHERE sn.target_user_id = #{userId}
+          AND sn.type IN ('COMMENT', 'MENTION')
+        ORDER BY sn.create_time DESC
+        LIMIT 100
+    </select>
+
+    <select id="findFollowNotifications" resultMap="NotificationItemResultMap">
+        SELECT
+            CONCAT('sys_', sn.id) AS id,
+            sn.type AS type,
+            sn.actor_user_id AS actor_user_id,
+            u.username AS actor_user_name,
+            u.avatar_url AS actor_user_avatar,
+            sn.message AS message,
+            sn.create_time AS create_time,
+            sn.post_id AS post_id,
+            sn.unread AS unread
+        FROM system_notification sn
+                 INNER JOIN `user` u ON u.id = sn.actor_user_id
+        WHERE sn.target_user_id = #{userId}
+          AND sn.type = 'FOLLOW'
+        ORDER BY sn.create_time DESC
+        LIMIT 100
+    </select>
+
+    <select id="findSystemNotifications" resultMap="NotificationItemResultMap">
+        SELECT
+            CONCAT('sys_', sn.id) AS id,
+            sn.type AS type,
+            sn.actor_user_id AS actor_user_id,
+            COALESCE(u.username, '系统') AS actor_user_name,
+            u.avatar_url AS actor_user_avatar,
+            sn.message AS message,
+            sn.create_time AS create_time,
+            sn.post_id AS post_id,
+            sn.unread AS unread
+        FROM system_notification sn
+                 LEFT JOIN `user` u ON u.id = sn.actor_user_id
+        WHERE sn.target_user_id = #{userId}
+          AND sn.type NOT IN ('LIKE', 'FAVORITE', 'LIKE_COMMENT', 'COMMENT', 'MENTION', 'FOLLOW')
+        ORDER BY sn.create_time DESC
+        LIMIT 100
+    </select>
+
+    <insert id="insertSystemNotification">
+        INSERT INTO system_notification (
+            event_id, type, target_user_id, actor_user_id, post_id, comment_id, message, unread, create_time, update_time
+        ) VALUES (
+            #{eventId}, #{type}, #{targetUserId}, #{actorUserId}, #{postId}, #{commentId}, #{message}, 1, #{createTime}, NOW()
+        )
+        ON DUPLICATE KEY UPDATE update_time = NOW()
+    </insert>
+
+</mapper>

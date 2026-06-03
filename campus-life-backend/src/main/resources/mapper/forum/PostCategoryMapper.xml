@@ -1,0 +1,56 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="com.campus.campus_life_backend.modules.forum.mapper.PostCategoryMapper">
+
+    <resultMap id="PostCategoryResultMap" type="com.campus.campus_life_backend.modules.forum.entity.PostCategory">
+        <id property="id" column="id"/>
+        <result property="name" column="name"/>
+        <result property="code" column="code"/>
+        <result property="description" column="description"/>
+        <result property="sortOrder" column="sort_order"/>
+        <result property="status" column="status"/>
+        <result property="createTime" column="create_time"/>
+        <result property="updateTime" column="update_time"/>
+    </resultMap>
+
+    <insert id="insertCategory" parameterType="com.campus.campus_life_backend.modules.forum.entity.PostCategory" useGeneratedKeys="true" keyProperty="id">
+        INSERT INTO `post_category` (
+            name, code, description, sort_order, status, create_time, update_time
+        ) VALUES (
+            #{name}, #{code}, #{description}, #{sortOrder}, #{status}, NOW(), NOW()
+        )
+    </insert>
+
+    <select id="findById" resultMap="PostCategoryResultMap">
+        SELECT * FROM `post_category` WHERE id = #{id}
+    </select>
+
+    <select id="findByCode" resultMap="PostCategoryResultMap">
+        SELECT * FROM `post_category` WHERE code = #{code}
+    </select>
+
+    <select id="findAllActive" resultMap="PostCategoryResultMap">
+        SELECT * FROM `post_category`
+        WHERE status = 1
+        ORDER BY sort_order DESC, create_time DESC
+    </select>
+
+    <update id="updateCategory" parameterType="com.campus.campus_life_backend.modules.forum.entity.PostCategory">
+        UPDATE `post_category`
+        SET
+            name = #{name},
+            description = #{description},
+            sort_order = #{sortOrder},
+            update_time = NOW()
+        WHERE id = #{id}
+    </update>
+
+    <update id="updateStatus">
+        UPDATE `post_category` SET status = #{status}, update_time = NOW() WHERE id = #{id}
+    </update>
+
+</mapper>
+

@@ -1,0 +1,79 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="com.campus.campus_life_ai.ai.mapper.AiGatewaySafetyRuleMapper">
+
+    <resultMap id="AiGatewaySafetyRuleResultMap" type="com.campus.campus_life_ai.ai.entity.AiGatewaySafetyRule">
+        <id property="id" column="id"/>
+        <result property="ruleName" column="rule_name"/>
+        <result property="capabilityCode" column="capability_code"/>
+        <result property="sceneCode" column="scene_code"/>
+        <result property="direction" column="direction"/>
+        <result property="action" column="action"/>
+        <result property="matchType" column="match_type"/>
+        <result property="patternText" column="pattern_text"/>
+        <result property="category" column="category"/>
+        <result property="severity" column="severity"/>
+        <result property="enabled" column="enabled"/>
+        <result property="priority" column="priority"/>
+        <result property="createdAt" column="created_at"/>
+        <result property="updatedAt" column="updated_at"/>
+    </resultMap>
+
+    <select id="findAll" resultMap="AiGatewaySafetyRuleResultMap">
+        SELECT * FROM ai_gateway_safety_rule
+        ORDER BY enabled DESC, priority ASC, updated_at DESC, id DESC
+    </select>
+
+    <select id="findEnabled" resultMap="AiGatewaySafetyRuleResultMap">
+        SELECT * FROM ai_gateway_safety_rule
+        WHERE enabled = 1
+        ORDER BY priority ASC, id ASC
+    </select>
+
+    <select id="findById" resultMap="AiGatewaySafetyRuleResultMap">
+        SELECT * FROM ai_gateway_safety_rule WHERE id = #{id} LIMIT 1
+    </select>
+
+    <select id="countByCapabilityCode" resultType="int">
+        SELECT COUNT(1) FROM ai_gateway_safety_rule WHERE capability_code = #{capabilityCode}
+    </select>
+
+    <select id="countBySceneCode" resultType="int">
+        SELECT COUNT(1) FROM ai_gateway_safety_rule WHERE scene_code = #{sceneCode}
+    </select>
+
+    <insert id="insert" parameterType="com.campus.campus_life_ai.ai.entity.AiGatewaySafetyRule" useGeneratedKeys="true" keyProperty="id">
+        INSERT INTO ai_gateway_safety_rule (
+            rule_name, capability_code, scene_code, direction, action, match_type,
+            pattern_text, category, severity, enabled, priority, created_at, updated_at
+        ) VALUES (
+            #{ruleName}, #{capabilityCode}, #{sceneCode}, #{direction}, #{action}, #{matchType},
+            #{patternText}, #{category}, #{severity}, #{enabled}, #{priority}, #{createdAt}, #{updatedAt}
+        )
+    </insert>
+
+    <update id="update" parameterType="com.campus.campus_life_ai.ai.entity.AiGatewaySafetyRule">
+        UPDATE ai_gateway_safety_rule
+        SET rule_name = #{ruleName},
+            capability_code = #{capabilityCode},
+            scene_code = #{sceneCode},
+            direction = #{direction},
+            action = #{action},
+            match_type = #{matchType},
+            pattern_text = #{patternText},
+            category = #{category},
+            severity = #{severity},
+            enabled = #{enabled},
+            priority = #{priority},
+            updated_at = #{updatedAt}
+        WHERE id = #{id}
+    </update>
+
+    <delete id="deleteById">
+        DELETE FROM ai_gateway_safety_rule WHERE id = #{id}
+    </delete>
+
+</mapper>

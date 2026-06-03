@@ -1,0 +1,38 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="com.campus.campus_life_backend.modules.forum.mapper.PostLikeMapper">
+
+    <insert id="insertPostLike" parameterType="com.campus.campus_life_backend.modules.forum.entity.PostLike">
+        INSERT INTO `post_like` (post_id, user_id, create_time)
+        VALUES (#{postId}, #{userId}, NOW())
+    </insert>
+
+    <select id="findByPostIdAndUserId" resultType="com.campus.campus_life_backend.modules.forum.entity.PostLike">
+        SELECT * FROM `post_like`
+        WHERE post_id = #{postId} AND user_id = #{userId}
+    </select>
+
+    <select id="findLikedPostIdsByUserIdAndPostIds" resultType="long">
+        SELECT post_id
+        FROM `post_like`
+        WHERE user_id = #{userId}
+          AND post_id IN
+          <foreach collection="postIds" item="postId" open="(" separator="," close=")">
+              #{postId}
+          </foreach>
+    </select>
+
+    <delete id="deletePostLike">
+        DELETE FROM `post_like`
+        WHERE post_id = #{postId} AND user_id = #{userId}
+    </delete>
+
+    <select id="countByPostId" resultType="int">
+        SELECT COUNT(*) FROM `post_like` WHERE post_id = #{postId}
+    </select>
+
+</mapper>
+

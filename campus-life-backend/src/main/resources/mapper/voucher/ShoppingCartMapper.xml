@@ -1,0 +1,99 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="com.campus.campus_life_backend.modules.voucher.mapper.ShoppingCartMapper">
+
+    <resultMap id="ShoppingCartItemResultMap" type="com.campus.campus_life_backend.modules.voucher.entity.ShoppingCartItem">
+        <id property="id" column="id"/>
+        <result property="userId" column="user_id"/>
+        <result property="voucherId" column="voucher_id"/>
+        <result property="quantity" column="quantity"/>
+        <result property="selected" column="selected"/>
+        <result property="createTime" column="create_time"/>
+        <result property="updateTime" column="update_time"/>
+    </resultMap>
+
+    <insert id="insert" parameterType="com.campus.campus_life_backend.modules.voucher.entity.ShoppingCartItem" useGeneratedKeys="true" keyProperty="id">
+        INSERT INTO shopping_cart (user_id, voucher_id, quantity, selected, create_time, update_time)
+        VALUES (#{userId}, #{voucherId}, #{quantity}, #{selected}, NOW(), NOW())
+    </insert>
+
+    <select id="findByUserAndVoucher" resultMap="ShoppingCartItemResultMap">
+        SELECT *
+        FROM shopping_cart
+        WHERE user_id = #{userId} AND voucher_id = #{voucherId}
+        LIMIT 1
+    </select>
+
+    <update id="updateQuantityAndSelectedById">
+        UPDATE shopping_cart
+        SET quantity = #{quantity},
+            selected = #{selected},
+            update_time = NOW()
+        WHERE id = #{id} AND user_id = #{userId}
+    </update>
+
+    <update id="updateSelectedById">
+        UPDATE shopping_cart
+        SET selected = #{selected},
+            update_time = NOW()
+        WHERE id = #{id} AND user_id = #{userId}
+    </update>
+
+    <delete id="deleteById">
+        DELETE FROM shopping_cart
+        WHERE id = #{id} AND user_id = #{userId}
+    </delete>
+
+    <delete id="deleteByIds">
+        DELETE FROM shopping_cart
+        WHERE user_id = #{userId}
+          AND id IN
+          <foreach collection="ids" item="id" open="(" separator="," close=")">
+              #{id}
+          </foreach>
+    </delete>
+
+    <delete id="clearByUser">
+        DELETE FROM shopping_cart WHERE user_id = #{userId}
+    </delete>
+
+    <select id="findViewsByUser" resultType="map">
+        SELECT
+            sc.id AS id,
+            sc.voucher_id AS voucherId,
+            sc.quantity AS quantity,
+            sc.selected AS selected,
+            sc.update_time AS updateTime,
+            v.title AS title,
+            v.sub_title AS description,
+            v.image_url AS image,
+            v.pay_value AS price,
+            v.amount AS originalPrice,
+            v.stock AS stock,
+            v.sold_count AS salesCount,
+            m.name AS shopName,
+            CASE WHEN sv.id IS NULL THEN 0 ELSE 1 END AS isSeckill,
+            sv.start_time AS seckillStartTime,
+            sv.end_time AS seckillEndTime
+        FROM shopping_cart sc
+                 LEFT JOIN voucher v ON sc.voucher_id = v.id
+                 LEFT JOIN merchant m ON v.merchant_id = m.id
+                 LEFT JOIN seckill_voucher sv ON sv.voucher_id = v.id
+        WHERE sc.user_id = #{userId}
+        ORDER BY sc.update_time DESC
+    </select>
+
+    <select id="findByIds" resultMap="ShoppingCartItemResultMap">
+        SELECT *
+        FROM shopping_cart
+        WHERE user_id = #{userId}
+          AND id IN
+          <foreach collection="ids" item="id" open="(" separator="," close=")">
+              #{id}
+          </foreach>
+        ORDER BY update_time DESC
+    </select>
+</mapper>

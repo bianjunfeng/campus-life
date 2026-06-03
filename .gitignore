@@ -1,0 +1,75 @@
+# Private backups and local secrets
+private-secrets/
+
+# Environment files
+.env
+.env.*
+!.env.example
+!**/.env.example
+
+# Local Spring profiles that may contain real infrastructure credentials
+**/application-dev.yml
+**/application-dev.yaml
+**/application-local.yml
+**/application-local.yaml
+**/application-local-*.yml
+**/application-local-*.yaml
+
+# Java / Maven build output
+**/target/
+**/.mvn/wrapper/maven-wrapper.jar
+**/*.class
+**/*.jar
+**/*.war
+**/*.ear
+
+# Node / frontend build output
+**/node_modules/
+**/dist/
+**/dist-ssr/
+**/.vite/
+**/coverage/
+
+# Logs and runtime output
+**/logs/
+**/log/
+**/*.log
+**/*.out.log
+**/*.err.log
+**/jmeter.log
+**/startup.log
+**/probe-*.log
+**/restart-*.log
+**/run-*.log
+**/uploads/
+
+# Local middleware, downloaded tools, and runtime data
+tools/
+var/
+m2
+
+# Performance report output
+perf/reports/
+**/*.jtl
+
+# IDE and editor files
+.idea/
+**/.idea/
+.vscode/
+**/.vscode/
+*.iml
+*.iws
+*.ipr
+.classpath
+.project
+.settings/
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Temporary files
+*.tmp
+*.temp
+*.bak
+perf/seckill-tokens*.csv

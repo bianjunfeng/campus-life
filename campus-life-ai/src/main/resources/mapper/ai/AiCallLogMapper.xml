@@ -1,0 +1,101 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="com.campus.campus_life_ai.ai.mapper.AiCallLogMapper">
+
+    <resultMap id="AiCallLogResultMap" type="com.campus.campus_life_ai.ai.entity.AiCallLog">
+        <id property="id" column="id"/>
+        <result property="requestId" column="request_id"/>
+        <result property="sessionId" column="session_id"/>
+        <result property="userId" column="user_id"/>
+        <result property="capabilityCode" column="capability_code"/>
+        <result property="sceneCode" column="scene_code"/>
+        <result property="providerCode" column="provider_code"/>
+        <result property="modelCode" column="model_code"/>
+        <result property="success" column="success"/>
+        <result property="latencyMs" column="latency_ms"/>
+        <result property="promptTokens" column="prompt_tokens"/>
+        <result property="completionTokens" column="completion_tokens"/>
+        <result property="totalTokens" column="total_tokens"/>
+        <result property="fallbackLevel" column="fallback_level"/>
+        <result property="promptChars" column="prompt_chars"/>
+        <result property="completionChars" column="completion_chars"/>
+        <result property="costAmount" column="cost_amount"/>
+        <result property="errorCode" column="error_code"/>
+        <result property="errorType" column="error_type"/>
+        <result property="errorMessage" column="error_message"/>
+        <result property="createdAt" column="created_at"/>
+    </resultMap>
+
+    <insert id="insert" parameterType="com.campus.campus_life_ai.ai.entity.AiCallLog" useGeneratedKeys="true" keyProperty="id">
+        INSERT INTO ai_call_log (
+            request_id, session_id, user_id, capability_code, scene_code, provider_code, model_code,
+            success, latency_ms, prompt_tokens, completion_tokens, total_tokens, fallback_level,
+            prompt_chars, completion_chars, cost_amount, error_code, error_type, error_message, created_at
+        ) VALUES (
+            #{requestId}, #{sessionId}, #{userId}, #{capabilityCode}, #{sceneCode}, #{providerCode}, #{modelCode},
+            #{success}, #{latencyMs}, #{promptTokens}, #{completionTokens}, #{totalTokens}, #{fallbackLevel},
+            #{promptChars}, #{completionChars}, #{costAmount}, #{errorCode}, #{errorType}, #{errorMessage}, #{createdAt}
+        )
+    </insert>
+
+    <select id="findRecent" resultMap="AiCallLogResultMap">
+        SELECT * FROM ai_call_log
+        ORDER BY created_at DESC, id DESC
+        LIMIT #{limit}
+    </select>
+
+    <select id="aggregateOverview" resultType="map">
+        SELECT
+            COUNT(*) AS totalCalls,
+            SUM(CASE WHEN success = 1 THEN 1 ELSE 0 END) AS successCalls,
+            SUM(CASE WHEN success = 0 THEN 1 ELSE 0 END) AS failedCalls,
+            COALESCE(SUM(total_tokens), 0) AS totalTokens,
+            COALESCE(AVG(latency_ms), 0) AS avgLatencyMs,
+            COALESCE(SUM(cost_amount), 0) AS totalCostAmount
+        FROM ai_call_log
+    </select>
+
+    <select id="aggregateQuotaUsage" resultType="map">
+        SELECT
+            COUNT(*) AS totalCalls,
+            COALESCE(SUM(total_tokens), 0) AS totalTokens,
+            COALESCE(SUM(cost_amount), 0) AS totalCostAmount
+        FROM ai_call_log
+        WHERE created_at &gt;= #{periodStart}
+          AND (#{userId} IS NULL OR user_id = #{userId})
+          AND (#{capabilityCode} IS NULL OR capability_code = #{capabilityCode})
+          AND (#{sceneCode} IS NULL OR scene_code = #{sceneCode})
+    </select>
+
+    <select id="findUsageTrend" resultType="map">
+        SELECT
+            CAST(created_at AS DATE) AS bucket,
+            COUNT(*) AS totalCalls,
+            SUM(CASE WHEN success = 1 THEN 1 ELSE 0 END) AS successCalls,
+            COALESCE(SUM(total_tokens), 0) AS totalTokens,
+            COALESCE(SUM(cost_amount), 0) AS totalCostAmount
+        FROM ai_call_log
+        WHERE created_at &gt;= #{from}
+        GROUP BY CAST(created_at AS DATE)
+        ORDER BY bucket DESC
+    </select>
+
+    <select id="findModelRanking" resultType="map">
+        SELECT
+            provider_code AS providerCode,
+            model_code AS modelCode,
+            COUNT(*) AS totalCalls,
+            SUM(CASE WHEN success = 1 THEN 1 ELSE 0 END) AS successCalls,
+            COALESCE(SUM(total_tokens), 0) AS totalTokens,
+            COALESCE(SUM(cost_amount), 0) AS totalCostAmount,
+            COALESCE(AVG(latency_ms), 0) AS avgLatencyMs
+        FROM ai_call_log
+        GROUP BY provider_code, model_code
+        ORDER BY totalCostAmount DESC, totalTokens DESC, totalCalls DESC
+        LIMIT #{limit}
+    </select>
+
+</mapper>

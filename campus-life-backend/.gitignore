@@ -1,0 +1,51 @@
+HELP.md
+target/
+target/.m2repo/
+.mvn/wrapper/maven-wrapper.jar
+!**/src/main/**/target/
+!**/src/test/**/target/
+
+### Runtime output ###
+logs/
+*.log
+*.out.log
+*.err.log
+jmeter.log
+startup.log
+probe-*.log
+restart-*.log
+run-*.log
+uploads/
+
+### Local env ###
+.env
+.env.*
+!.env.example
+
+### STS ###
+.apt_generated
+.classpath
+.factorypath
+.project
+.settings
+.springBeans
+.sts4-cache
+
+### IntelliJ IDEA ###
+.idea
+*.iws
+*.iml
+*.ipr
+
+### NetBeans ###
+/nbproject/private/
+/nbbuild/
+/dist/
+/nbdist/
+/.nb-gradle/
+build/
+!**/src/main/**/build/
+!**/src/test/**/build/
+
+### VS Code ###
+.vscode/

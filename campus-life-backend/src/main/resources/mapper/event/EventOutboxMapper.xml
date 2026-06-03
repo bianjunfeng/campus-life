@@ -1,0 +1,105 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="com.campus.campus_life_backend.common.event.mapper.EventOutboxMapper">
+
+    <resultMap id="EventOutboxResultMap" type="com.campus.campus_life_backend.common.event.EventOutboxRecord">
+        <id property="id" column="id"/>
+        <result property="eventId" column="event_id"/>
+        <result property="channel" column="channel"/>
+        <result property="topic" column="topic"/>
+        <result property="messageKey" column="message_key"/>
+        <result property="eventType" column="event_type"/>
+        <result property="aggregateType" column="aggregate_type"/>
+        <result property="aggregateId" column="aggregate_id"/>
+        <result property="payload" column="payload"/>
+        <result property="status" column="status"/>
+        <result property="retryCount" column="retry_count"/>
+        <result property="nextRetryAt" column="next_retry_at"/>
+        <result property="lastError" column="last_error"/>
+        <result property="createdAt" column="created_at"/>
+        <result property="updatedAt" column="updated_at"/>
+        <result property="sentAt" column="sent_at"/>
+    </resultMap>
+
+    <insert id="insert" parameterType="com.campus.campus_life_backend.common.event.EventOutboxRecord">
+        INSERT INTO event_outbox (
+            event_id, channel, topic, message_key, event_type, aggregate_type,
+            aggregate_id, payload, status, next_retry_at, created_at, updated_at
+        ) VALUES (
+            #{eventId}, #{channel}, #{topic}, #{messageKey}, #{eventType}, #{aggregateType},
+            #{aggregateId}, #{payload}, 'NEW', NOW(), NOW(), NOW()
+        )
+        ON DUPLICATE KEY UPDATE updated_at = updated_at
+    </insert>
+
+    <select id="findDue" resultMap="EventOutboxResultMap">
+        SELECT *
+        FROM event_outbox
+        WHERE status IN ('NEW', 'FAILED')
+          AND next_retry_at &lt;= #{now}
+        ORDER BY next_retry_at ASC, id ASC
+        LIMIT #{limit}
+    </select>
+
+    <update id="markSending">
+        UPDATE event_outbox
+        SET status = 'SENDING', updated_at = NOW()
+        WHERE id = #{id}
+          AND status IN ('NEW', 'FAILED')
+    </update>
+
+    <update id="markSent">
+        UPDATE event_outbox
+        SET status = 'SENT', sent_at = NOW(), last_error = NULL, updated_at = NOW()
+        WHERE id = #{id}
+    </update>
+
+    <update id="markFailed">
+        UPDATE event_outbox
+        SET status = 'FAILED',
+            retry_count = retry_count + 1,
+            next_retry_at = DATE_ADD(NOW(), INTERVAL #{delaySeconds} SECOND),
+            last_error = #{lastError},
+            updated_at = NOW()
+        WHERE id = #{id}
+    </update>
+
+    <update id="resetStaleSending">
+        UPDATE event_outbox
+        SET status = 'FAILED',
+            next_retry_at = NOW(),
+            last_error = 'reset stale SENDING record',
+            updated_at = NOW()
+        WHERE status = 'SENDING'
+          AND updated_at &lt;= #{threshold}
+    </update>
+
+    <select id="countByStatus" resultType="map">
+        SELECT status, COUNT(1) AS count
+        FROM event_outbox
+        GROUP BY status
+    </select>
+
+    <select id="countByChannelAndStatus" resultType="map">
+        SELECT channel, status, COUNT(1) AS count
+        FROM event_outbox
+        GROUP BY channel, status
+    </select>
+
+    <select id="findOldestPendingCreatedAt" resultType="java.time.LocalDateTime">
+        SELECT MIN(created_at)
+        FROM event_outbox
+        WHERE status IN ('NEW', 'FAILED', 'SENDING')
+    </select>
+
+    <select id="findOldestPendingCreatedAtByChannel" resultType="map">
+        SELECT channel, MIN(created_at) AS oldest_created_at
+        FROM event_outbox
+        WHERE status IN ('NEW', 'FAILED', 'SENDING')
+        GROUP BY channel
+    </select>
+
+</mapper>

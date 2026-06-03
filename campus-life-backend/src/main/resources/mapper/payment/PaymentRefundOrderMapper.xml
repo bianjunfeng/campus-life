@@ -1,0 +1,318 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="com.campus.campus_life_backend.modules.payment.mapper.PaymentRefundOrderMapper">
+
+    <resultMap id="PaymentRefundOrderResultMap" type="com.campus.campus_life_backend.modules.payment.entity.PaymentRefundOrder">
+        <id property="id" column="id"/>
+        <result property="refundNo" column="refund_no"/>
+        <result property="paymentNo" column="payment_no"/>
+        <result property="bizType" column="biz_type"/>
+        <result property="bizOrderNo" column="biz_order_no"/>
+        <result property="userId" column="user_id"/>
+        <result property="merchantId" column="merchant_id"/>
+        <result property="channel" column="channel"/>
+        <result property="refundAmount" column="refund_amount"/>
+        <result property="requestedAmount" column="requested_amount"/>
+        <result property="approvedAmount" column="approved_amount"/>
+        <result property="reason" column="reason"/>
+        <result property="status" column="status"/>
+        <result property="currentReviewerRole" column="current_reviewer_role"/>
+        <result property="currentReviewerId" column="current_reviewer_id"/>
+        <result property="reviewDeadline" column="review_deadline"/>
+        <result property="merchantReviewReason" column="merchant_review_reason"/>
+        <result property="merchantReviewTime" column="merchant_review_time"/>
+        <result property="merchantReviewerId" column="merchant_reviewer_id"/>
+        <result property="adminReviewReason" column="admin_review_reason"/>
+        <result property="adminReviewTime" column="admin_review_time"/>
+        <result property="adminReviewerId" column="admin_reviewer_id"/>
+        <result property="channelRefundNo" column="channel_refund_no"/>
+        <result property="requestIdempotencyKey" column="request_idempotency_key"/>
+        <result property="successTime" column="success_time"/>
+        <result property="createTime" column="create_time"/>
+        <result property="updateTime" column="update_time"/>
+    </resultMap>
+
+    <insert id="insert" parameterType="com.campus.campus_life_backend.modules.payment.entity.PaymentRefundOrder" useGeneratedKeys="true" keyProperty="id">
+        INSERT INTO `payment_refund_order` (
+            refund_no,
+            payment_no,
+            biz_type,
+            biz_order_no,
+            user_id,
+            merchant_id,
+            channel,
+            refund_amount,
+            requested_amount,
+            approved_amount,
+            reason,
+            status,
+            current_reviewer_role,
+            current_reviewer_id,
+            review_deadline,
+            merchant_review_reason,
+            merchant_review_time,
+            merchant_reviewer_id,
+            admin_review_reason,
+            admin_review_time,
+            admin_reviewer_id,
+            channel_refund_no,
+            request_idempotency_key,
+            success_time
+        ) VALUES (
+            #{refundNo},
+            #{paymentNo},
+            #{bizType},
+            #{bizOrderNo},
+            #{userId},
+            #{merchantId},
+            #{channel},
+            #{refundAmount},
+            #{requestedAmount},
+            #{approvedAmount},
+            #{reason},
+            #{status},
+            #{currentReviewerRole},
+            #{currentReviewerId},
+            #{reviewDeadline},
+            #{merchantReviewReason},
+            #{merchantReviewTime},
+            #{merchantReviewerId},
+            #{adminReviewReason},
+            #{adminReviewTime},
+            #{adminReviewerId},
+            #{channelRefundNo},
+            #{requestIdempotencyKey},
+            #{successTime}
+        )
+    </insert>
+
+    <select id="findById" resultMap="PaymentRefundOrderResultMap">
+        SELECT * FROM `payment_refund_order` WHERE id = #{id}
+    </select>
+
+    <select id="findByRefundNo" resultMap="PaymentRefundOrderResultMap">
+        SELECT * FROM `payment_refund_order` WHERE refund_no = #{refundNo} LIMIT 1
+    </select>
+
+    <select id="findByRequestIdempotencyKey" resultMap="PaymentRefundOrderResultMap">
+        SELECT * FROM `payment_refund_order`
+        WHERE request_idempotency_key = #{requestIdempotencyKey}
+        LIMIT 1
+    </select>
+
+    <select id="findLatestByBizOrderNo" resultMap="PaymentRefundOrderResultMap">
+        SELECT * FROM `payment_refund_order`
+        WHERE biz_order_no = #{bizOrderNo}
+        ORDER BY id DESC
+        LIMIT 1
+    </select>
+
+    <select id="findByPaymentNo" resultMap="PaymentRefundOrderResultMap">
+        SELECT * FROM `payment_refund_order`
+        WHERE payment_no = #{paymentNo}
+        ORDER BY id DESC
+    </select>
+
+    <sql id="RefundViewColumns">
+        r.id,
+        r.refund_no AS refundNo,
+        r.payment_no AS paymentNo,
+        r.biz_type AS bizType,
+        r.biz_order_no AS bizOrderNo,
+        r.user_id AS userId,
+        r.merchant_id AS merchantId,
+        r.channel,
+        r.refund_amount AS refundAmount,
+        r.requested_amount AS requestedAmount,
+        r.approved_amount AS approvedAmount,
+        r.reason,
+        r.status,
+        r.current_reviewer_role AS currentReviewerRole,
+        r.current_reviewer_id AS currentReviewerId,
+        r.review_deadline AS reviewDeadline,
+        r.merchant_review_reason AS merchantReviewReason,
+        r.merchant_review_time AS merchantReviewTime,
+        r.merchant_reviewer_id AS merchantReviewerId,
+        r.admin_review_reason AS adminReviewReason,
+        r.admin_review_time AS adminReviewTime,
+        r.admin_reviewer_id AS adminReviewerId,
+        r.channel_refund_no AS channelRefundNo,
+        r.success_time AS successTime,
+        r.create_time AS createTime,
+        r.update_time AS updateTime,
+        vo.payment_method AS paymentMethod,
+        vo.pay_time AS payTime,
+        vo.use_time AS useTime,
+        v.id AS voucherId,
+        v.title AS voucherTitle,
+        v.sub_title AS voucherSubTitle,
+        v.image_url AS voucherImage,
+        m.name AS shopName
+    </sql>
+
+    <select id="findUserRefundViews" resultType="map">
+        SELECT
+        <include refid="RefundViewColumns"/>
+        FROM `payment_refund_order` r
+        LEFT JOIN `voucher_order` vo ON vo.order_no = r.biz_order_no
+        LEFT JOIN `voucher` v ON v.id = vo.voucher_id
+        LEFT JOIN `merchant` m ON m.id = r.merchant_id
+        WHERE r.user_id = #{userId}
+        ORDER BY r.id DESC
+    </select>
+
+    <select id="findMerchantRefundViews" resultType="map">
+        SELECT
+        <include refid="RefundViewColumns"/>
+        FROM `payment_refund_order` r
+        LEFT JOIN `voucher_order` vo ON vo.order_no = r.biz_order_no
+        LEFT JOIN `voucher` v ON v.id = vo.voucher_id
+        LEFT JOIN `merchant` m ON m.id = r.merchant_id
+        WHERE r.merchant_id = #{merchantId}
+        <if test="status != null and status != ''">
+            AND r.status = #{status}
+        </if>
+        ORDER BY r.id DESC
+    </select>
+
+    <select id="findAdminRefundViews" resultType="map">
+        SELECT
+        <include refid="RefundViewColumns"/>
+        FROM `payment_refund_order` r
+        LEFT JOIN `voucher_order` vo ON vo.order_no = r.biz_order_no
+        LEFT JOIN `voucher` v ON v.id = vo.voucher_id
+        LEFT JOIN `merchant` m ON m.id = r.merchant_id
+        <if test="status != null and status != ''">
+            WHERE r.status = #{status}
+        </if>
+        ORDER BY r.id DESC
+    </select>
+
+    <select id="findOverdueMerchantReviewOrders" resultMap="PaymentRefundOrderResultMap">
+        SELECT * FROM `payment_refund_order`
+        WHERE status = 'WAIT_MERCHANT_REVIEW'
+          AND review_deadline IS NOT NULL
+          AND review_deadline &lt;= #{now}
+        ORDER BY review_deadline ASC
+        LIMIT #{limit}
+    </select>
+
+    <select id="sumSuccessfulRefundAmountByPaymentNo" resultType="java.math.BigDecimal">
+        SELECT COALESCE(SUM(refund_amount), 0)
+        FROM `payment_refund_order`
+        WHERE payment_no = #{paymentNo}
+          AND status = 'SUCCESS'
+    </select>
+
+    <update id="markSuccess">
+        UPDATE `payment_refund_order`
+        SET
+            status = 'SUCCESS',
+            channel_refund_no = #{channelRefundNo},
+            success_time = #{successTime},
+            current_reviewer_role = NULL,
+            current_reviewer_id = NULL
+        WHERE refund_no = #{refundNo}
+          AND status = #{expectedStatus}
+    </update>
+
+    <update id="markFailed">
+        UPDATE `payment_refund_order`
+        SET
+            status = 'FAILED',
+            current_reviewer_role = 'ADMIN',
+            current_reviewer_id = NULL
+        WHERE refund_no = #{refundNo}
+          AND status = #{expectedStatus}
+    </update>
+
+    <update id="markProcessingFromFailed">
+        UPDATE `payment_refund_order`
+        SET
+            status = 'PROCESSING',
+            current_reviewer_role = 'SYSTEM',
+            current_reviewer_id = NULL
+        WHERE refund_no = #{refundNo}
+          AND status = #{expectedStatus}
+    </update>
+
+    <update id="markMerchantApproved">
+        UPDATE `payment_refund_order`
+        SET
+            refund_amount = #{approvedAmount},
+            approved_amount = #{approvedAmount},
+            status = 'PROCESSING',
+            current_reviewer_role = 'SYSTEM',
+            current_reviewer_id = NULL,
+            merchant_review_reason = #{merchantReviewReason},
+            merchant_review_time = #{merchantReviewTime},
+            merchant_reviewer_id = #{merchantReviewerId}
+        WHERE refund_no = #{refundNo}
+          AND status = #{expectedStatus}
+    </update>
+
+    <update id="escalateToAdminReview">
+        UPDATE `payment_refund_order`
+        SET
+            status = 'WAIT_ADMIN_REVIEW',
+            current_reviewer_role = 'ADMIN',
+            current_reviewer_id = NULL,
+            review_deadline = #{reviewDeadline},
+            merchant_review_reason = #{merchantReviewReason},
+            merchant_review_time = #{merchantReviewTime},
+            merchant_reviewer_id = #{merchantReviewerId}
+        WHERE refund_no = #{refundNo}
+          AND status = #{expectedStatus}
+    </update>
+
+    <update id="markAdminApproved">
+        UPDATE `payment_refund_order`
+        SET
+            refund_amount = #{approvedAmount},
+            approved_amount = #{approvedAmount},
+            status = 'PROCESSING',
+            current_reviewer_role = 'SYSTEM',
+            current_reviewer_id = NULL,
+            admin_review_reason = #{adminReviewReason},
+            admin_review_time = #{adminReviewTime},
+            admin_reviewer_id = #{adminReviewerId}
+        WHERE refund_no = #{refundNo}
+          AND status = #{expectedStatus}
+    </update>
+
+    <update id="markAdminRejected">
+        UPDATE `payment_refund_order`
+        SET
+            status = 'REJECTED',
+            current_reviewer_role = NULL,
+            current_reviewer_id = NULL,
+            admin_review_reason = #{adminReviewReason},
+            admin_review_time = #{adminReviewTime},
+            admin_reviewer_id = #{adminReviewerId}
+        WHERE refund_no = #{refundNo}
+          AND status = #{expectedStatus}
+    </update>
+
+    <update id="escalateTimeoutToAdminReview">
+        UPDATE `payment_refund_order`
+        SET
+            status = 'WAIT_ADMIN_REVIEW',
+            current_reviewer_role = 'ADMIN',
+            current_reviewer_id = NULL,
+            review_deadline = #{reviewDeadline},
+            merchant_review_reason = COALESCE(merchant_review_reason, #{merchantReviewReason}),
+            merchant_review_time = COALESCE(merchant_review_time, #{merchantReviewTime})
+        WHERE refund_no = #{refundNo}
+          AND status = #{expectedStatus}
+    </update>
+
+    <select id="countByStatus" resultType="long">
+        SELECT COUNT(1)
+        FROM `payment_refund_order`
+        WHERE status = #{status}
+    </select>
+
+</mapper>

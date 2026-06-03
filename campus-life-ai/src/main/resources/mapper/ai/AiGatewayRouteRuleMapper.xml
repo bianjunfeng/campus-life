@@ -1,0 +1,72 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="com.campus.campus_life_ai.ai.mapper.AiGatewayRouteRuleMapper">
+
+    <resultMap id="AiGatewayRouteRuleResultMap" type="com.campus.campus_life_ai.ai.entity.AiGatewayRouteRule">
+        <id property="id" column="id"/>
+        <result property="ruleName" column="rule_name"/>
+        <result property="capabilityCode" column="capability_code"/>
+        <result property="sceneCode" column="scene_code"/>
+        <result property="matchRuleJson" column="match_rule_json"/>
+        <result property="routeRuleJson" column="route_rule_json"/>
+        <result property="enabled" column="enabled"/>
+        <result property="priority" column="priority"/>
+        <result property="createdAt" column="created_at"/>
+        <result property="updatedAt" column="updated_at"/>
+    </resultMap>
+
+    <select id="findAll" resultMap="AiGatewayRouteRuleResultMap">
+        SELECT * FROM ai_gateway_route_rule
+        ORDER BY priority ASC, updated_at DESC, id DESC
+    </select>
+
+    <select id="findById" resultMap="AiGatewayRouteRuleResultMap">
+        SELECT * FROM ai_gateway_route_rule WHERE id = #{id} LIMIT 1
+    </select>
+
+    <select id="findEnabledByCapabilityCode" resultMap="AiGatewayRouteRuleResultMap">
+        SELECT * FROM ai_gateway_route_rule
+        WHERE capability_code = #{capabilityCode}
+          AND enabled = 1
+        ORDER BY priority ASC, id ASC
+    </select>
+
+    <select id="countByCapabilityCode" resultType="int">
+        SELECT COUNT(1) FROM ai_gateway_route_rule WHERE capability_code = #{capabilityCode}
+    </select>
+
+    <select id="countBySceneCode" resultType="int">
+        SELECT COUNT(1) FROM ai_gateway_route_rule WHERE scene_code = #{sceneCode}
+    </select>
+
+    <insert id="insert" parameterType="com.campus.campus_life_ai.ai.entity.AiGatewayRouteRule" useGeneratedKeys="true" keyProperty="id">
+        INSERT INTO ai_gateway_route_rule (
+            rule_name, capability_code, scene_code, match_rule_json, route_rule_json,
+            enabled, priority, created_at, updated_at
+        ) VALUES (
+            #{ruleName}, #{capabilityCode}, #{sceneCode}, #{matchRuleJson}, #{routeRuleJson},
+            #{enabled}, #{priority}, #{createdAt}, #{updatedAt}
+        )
+    </insert>
+
+    <update id="update" parameterType="com.campus.campus_life_ai.ai.entity.AiGatewayRouteRule">
+        UPDATE ai_gateway_route_rule
+        SET rule_name = #{ruleName},
+            capability_code = #{capabilityCode},
+            scene_code = #{sceneCode},
+            match_rule_json = #{matchRuleJson},
+            route_rule_json = #{routeRuleJson},
+            enabled = #{enabled},
+            priority = #{priority},
+            updated_at = #{updatedAt}
+        WHERE id = #{id}
+    </update>
+
+    <delete id="deleteById">
+        DELETE FROM ai_gateway_route_rule WHERE id = #{id}
+    </delete>
+
+</mapper>

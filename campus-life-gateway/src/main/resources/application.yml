@@ -1,0 +1,181 @@
+server:
+  port: 8090
+
+spring:
+  application:
+    name: campus-life-gateway
+  data:
+    redis:
+      host: ${SPRING_REDIS_HOST:127.0.0.1}
+      port: ${SPRING_REDIS_PORT:6379}
+      password: ${SPRING_REDIS_PASSWORD:}
+      timeout: ${SPRING_REDIS_TIMEOUT:3000}
+  cloud:
+    gateway:
+      routes:
+        - id: voucher-seckill-api
+          uri: ${gateway.voucher-uri:http://localhost:8081}
+          predicates:
+            - Path=/api/coupons/*/grab,/api/coupons/grab/result,/api/voucher-service/health,/api/voucher-service/seckill/preheat/*,/api/voucher-service/seckill/monitor,/api/voucher-service/coupons/*/grab,/api/voucher-service/coupons/grab/result
+          filters:
+            - name: RequestRateLimiter
+              args:
+                key-resolver: "#{@userOrIpKeyResolver}"
+                redis-rate-limiter.replenishRate: ${gateway.rate-limit.replenish-rate:80}
+                redis-rate-limiter.burstCapacity: ${gateway.rate-limit.burst-capacity:160}
+                redis-rate-limiter.requestedTokens: ${gateway.rate-limit.requested-tokens:1}
+        - id: backend-api-gray
+          uri: ${gateway.gray.backend-uri:http://localhost:8082}
+          predicates:
+            - Path=/__gray/api/**
+          filters:
+            - RewritePath=/__gray(?<segment>/?.*), /$\{segment}
+            - name: RequestRateLimiter
+              args:
+                key-resolver: "#{@userOrIpKeyResolver}"
+                redis-rate-limiter.replenishRate: ${gateway.rate-limit.replenish-rate:80}
+                redis-rate-limiter.burstCapacity: ${gateway.rate-limit.burst-capacity:160}
+                redis-rate-limiter.requestedTokens: ${gateway.rate-limit.requested-tokens:1}
+        - id: ai-api
+          uri: ${gateway.ai-uri:http://localhost:8083}
+          predicates:
+            - Path=/api/agent/**,/api/ai/**,/api/admin/ai/**,/api/merchant/ai/**
+          filters:
+            - name: RequestRateLimiter
+              args:
+                key-resolver: "#{@userOrIpKeyResolver}"
+                redis-rate-limiter.replenishRate: ${gateway.rate-limit.replenish-rate:80}
+                redis-rate-limiter.burstCapacity: ${gateway.rate-limit.burst-capacity:160}
+                redis-rate-limiter.requestedTokens: ${gateway.rate-limit.requested-tokens:1}
+        - id: backend-api
+          uri: ${gateway.backend-uri:http://localhost:8080}
+          predicates:
+            - Path=/api/**
+          filters:
+            - name: RequestRateLimiter
+              args:
+                key-resolver: "#{@userOrIpKeyResolver}"
+                redis-rate-limiter.replenishRate: ${gateway.rate-limit.replenish-rate:80}
+                redis-rate-limiter.burstCapacity: ${gateway.rate-limit.burst-capacity:160}
+                redis-rate-limiter.requestedTokens: ${gateway.rate-limit.requested-tokens:1}
+        - id: backend-uploads
+          uri: ${gateway.backend-uri:http://localhost:8080}
+          predicates:
+            - Path=/uploads/**
+      default-filters:
+        - PreserveHostHeader
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,prometheus
+  metrics:
+    tags:
+      application: ${spring.application.name}
+
+gateway:
+  backend-uri: ${GATEWAY_BACKEND_URI:http://localhost:8080}
+  voucher-uri: ${GATEWAY_VOUCHER_URI:http://localhost:8081}
+  ai-uri: ${GATEWAY_AI_URI:http://localhost:8083}
+  rate-limit:
+    replenish-rate: ${GATEWAY_RATE_LIMIT_REPLENISH_RATE:80}
+    burst-capacity: ${GATEWAY_RATE_LIMIT_BURST_CAPACITY:160}
+    requested-tokens: ${GATEWAY_RATE_LIMIT_REQUESTED_TOKENS:1}
+  gray:
+    enabled: ${GATEWAY_GRAY_ENABLED:false}
+    backend-uri: ${GATEWAY_GRAY_BACKEND_URI:http://localhost:8082}
+    header-name: ${GATEWAY_GRAY_HEADER_NAME:X-Gray}
+    header-value: ${GATEWAY_GRAY_HEADER_VALUE:1}
+    internal-prefix: /__gray
+  auth:
+    enabled: ${GATEWAY_AUTH_ENABLED:true}
+    jwt-secret: ${JWT_SECRET:campus-life-secret-key-2025-please-change-in-production}
+    state-check-enabled: ${GATEWAY_AUTH_STATE_CHECK_ENABLED:true}
+    fail-open: ${GATEWAY_AUTH_FAIL_OPEN:false}
+    redis-token-prefix: ${GATEWAY_AUTH_REDIS_TOKEN_PREFIX:token:}
+    redis-blacklist-prefix: ${GATEWAY_AUTH_REDIS_BLACKLIST_PREFIX:blacklist:}
+    # 不鉴权的路径（网关白名单）
+    public-paths:
+      - /api/auth/users
+      - /api/auth/tokens
+      - /api/auth/send-code
+      - /api/auth/refresh
+      - /api/auth/oauth/**
+      - /api/payment/alipay/notify
+      - /api/payment/wechat/notify
+      - /api/payment/alipay/return
+      - /api/voucher-service/health
+      - /v3/api-docs/**
+      - /swagger-ui/**
+      - /swagger-ui.html
+    # 仅 GET 公开的路径，避免把同路径的写操作也放开
+    public-get-paths:
+      - /api/forum/posts
+      - /api/forum/posts/*
+      - /api/forum/posts/user/*
+      - /api/forum/posts/user/*/favorites
+      - /api/forum/posts/*/comments
+      - /api/categories
+      - /api/categories/posts
+      - /api/welfare/home
+      - /api/coupons
+      - /api/coupons/*
+      - /api/flash-sales
+      - /api/products/*
+      - /api/voucher-service/welfare/home
+      - /api/voucher-service/coupons
+      - /api/voucher-service/coupons/*
+      - /api/voucher-service/flash-sales
+      - /api/search/**
+      - /api/shops
+      - /api/shops/types
+      - /api/shops/nearby
+      - /api/shops/*
+      - /api/users/*/followers
+      - /api/users/*/followees
+      - /api/users/*/mutual-follows
+      - /api/users/*
+      - /api/vouchers/available
+    # 任意方法都必须鉴权的路径模式
+    protected-paths:
+      - /api/agent/**
+      - /api/ai/**
+      - /api/admin/ai/**
+      - /api/merchant/ai/**
+      - /api/auth/logout
+      - /api/auth/logout-all
+      - /api/auth/sessions/**
+      - /api/forum/reports/**
+      - /api/forum/comments/*
+      - /api/forum/comments/*/like
+      - /api/forum/posts/me
+      - /api/forum/posts/me/**
+      - /api/forum/posts/following
+      - /api/forum/posts/*/like
+      - /api/forum/posts/*/favorite
+      - /api/users/*/follow
+    # 仅写操作需要鉴权、GET 仍可公开的路径模式
+    protected-write-paths:
+      - /api/forum/posts
+      - /api/forum/posts/*
+      - /api/forum/posts/*/comments
+      - /api/shops/*/location
+    # 需要网关鉴权的路径前缀（其余 /api 接口默认鉴权，仅显式白名单放行）
+    protected-prefixes:
+      - /api
+      - /api/forum
+      - /api/users
+      - /api/users/me
+      - /api/search
+      - /api/shops
+      - /api/message
+      - /api/cart
+      - /api/payment
+      - /api/vouchers
+      - /api/coupons/
+      - /api/auth-request
+      - /api/upload
+      - /api/admin
+      - /api/merchant
+      - /api/voucher-service

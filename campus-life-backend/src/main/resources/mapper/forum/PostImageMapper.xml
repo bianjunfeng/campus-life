@@ -1,0 +1,43 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="com.campus.campus_life_backend.modules.forum.mapper.PostImageMapper">
+
+    <resultMap id="PostImageResultMap" type="com.campus.campus_life_backend.modules.forum.entity.PostImage">
+        <id property="id" column="id"/>
+        <result property="postId" column="post_id"/>
+        <result property="url" column="url"/>
+        <result property="width" column="width"/>
+        <result property="height" column="height"/>
+        <result property="sortOrder" column="sort_order"/>
+        <result property="createTime" column="create_time"/>
+    </resultMap>
+
+    <select id="findByPostId" resultMap="PostImageResultMap">
+        SELECT * FROM `post_image`
+        WHERE post_id = #{postId}
+        ORDER BY sort_order DESC, id ASC
+    </select>
+
+    <select id="findByPostIds" resultMap="PostImageResultMap">
+        SELECT * FROM `post_image`
+        WHERE post_id IN
+        <foreach collection="postIds" item="postId" open="(" separator="," close=")">
+            #{postId}
+        </foreach>
+        ORDER BY post_id ASC, sort_order DESC, id ASC
+    </select>
+
+    <insert id="insertPostImage" parameterType="com.campus.campus_life_backend.modules.forum.entity.PostImage" useGeneratedKeys="true" keyProperty="id">
+        INSERT INTO `post_image` (post_id, url, width, height, sort_order, create_time)
+        VALUES (#{postId}, #{url,jdbcType=LONGVARCHAR}, #{width}, #{height}, #{sortOrder}, NOW())
+    </insert>
+
+    <delete id="deleteByPostId">
+        DELETE FROM `post_image` WHERE post_id = #{postId}
+    </delete>
+
+</mapper>
+

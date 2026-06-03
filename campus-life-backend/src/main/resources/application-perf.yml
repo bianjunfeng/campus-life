@@ -1,0 +1,28 @@
+server:
+  tomcat:
+    threads:
+      max: ${PERF_TOMCAT_MAX_THREADS:400}
+      min-spare: ${PERF_TOMCAT_MIN_SPARE_THREADS:50}
+    accept-count: ${PERF_TOMCAT_ACCEPT_COUNT:1000}
+    max-connections: ${PERF_TOMCAT_MAX_CONNECTIONS:8192}
+
+spring:
+  datasource:
+    hikari:
+      maximum-pool-size: ${PERF_DB_MAX_POOL_SIZE:40}
+      minimum-idle: ${PERF_DB_MIN_IDLE:10}
+  rabbitmq:
+    listener:
+      simple:
+        concurrency: ${PERF_RABBIT_CONCURRENCY:8}
+        max-concurrency: ${PERF_RABBIT_MAX_CONCURRENCY:16}
+        prefetch: ${PERF_RABBIT_PREFETCH:100}
+
+seckill:
+  sentinel:
+    qps: ${PERF_SECKILL_QPS:2500}
+
+logging:
+  level:
+    org.springframework.amqp: WARN
+    org.springframework.web: INFO

@@ -1,0 +1,127 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="com.campus.campus_life_backend.modules.message.mapper.MessageMapper">
+
+    <resultMap id="MessageResultMap" type="com.campus.campus_life_backend.modules.message.entity.Message">
+        <id property="id" column="id"/>
+        <result property="conversationId" column="conversation_id"/>
+        <result property="fromUserId" column="from_user_id"/>
+        <result property="toUserId" column="to_user_id"/>
+        <result property="content" column="content"/>
+        <result property="status" column="status"/>
+        <result property="createTime" column="create_time"/>
+    </resultMap>
+
+    <!-- 插入消息 -->
+    <insert id="insertMessage" parameterType="com.campus.campus_life_backend.modules.message.entity.Message" useGeneratedKeys="true" keyProperty="id">
+        INSERT INTO message (conversation_id, from_user_id, to_user_id, content, status, create_time)
+        VALUES (#{conversationId}, #{fromUserId}, #{toUserId}, #{content}, #{status}, #{createTime})
+    </insert>
+
+    <!-- 根据ID查询消息 -->
+    <select id="findById" resultMap="MessageResultMap">
+        SELECT * FROM message WHERE id = #{id}
+    </select>
+
+    <!-- 获取会话的消息列表 -->
+    <select id="findByConversationId" resultMap="MessageResultMap">
+        SELECT * FROM message
+        WHERE conversation_id = #{conversationId} AND status != 2
+        ORDER BY create_time ASC
+        <if test="offset != null and limit != null">
+            LIMIT #{offset}, #{limit}
+        </if>
+    </select>
+
+    <!-- 获取用户的所有会话列表（每个会话返回最新一条消息） -->
+    <select id="findConversationsByUserId" resultMap="MessageResultMap">
+        SELECT m.* FROM message m
+        INNER JOIN (
+            SELECT latest_by_time.conversation_id, MAX(latest_by_time.id) AS latest_id
+            FROM message latest_by_time
+            INNER JOIN (
+                SELECT conversation_id, MAX(create_time) AS max_time
+                FROM message
+                WHERE (from_user_id = #{userId} OR to_user_id = #{userId}) AND status != 2
+                GROUP BY conversation_id
+            ) latest_time
+            ON latest_by_time.conversation_id = latest_time.conversation_id
+            AND latest_by_time.create_time = latest_time.max_time
+            WHERE (latest_by_time.from_user_id = #{userId} OR latest_by_time.to_user_id = #{userId})
+            AND latest_by_time.status != 2
+            GROUP BY latest_by_time.conversation_id
+        ) latest ON m.id = latest.latest_id
+        ORDER BY m.create_time DESC, m.id DESC
+    </select>
+
+    <!-- 获取两个用户之间的会话ID -->
+    <select id="findConversationId" resultType="String">
+        SELECT DISTINCT conversation_id FROM message
+        WHERE ((from_user_id = #{userId1} AND to_user_id = #{userId2})
+           OR (from_user_id = #{userId2} AND to_user_id = #{userId1}))
+        AND status != 2
+        LIMIT 1
+    </select>
+
+    <!-- 统计会话中的消息数量 -->
+    <select id="countByConversationId" resultType="int">
+        SELECT COUNT(*) FROM message
+        WHERE conversation_id = #{conversationId} AND status != 2
+    </select>
+
+    <!-- 统计用户未读消息数量 -->
+    <select id="countUnreadByUserId" resultType="int">
+        SELECT COUNT(*) FROM message
+        WHERE to_user_id = #{userId} AND status = 0
+    </select>
+
+    <!-- 统计会话中未读消息数量 -->
+    <select id="countUnreadByConversationId" resultType="int">
+        SELECT COUNT(*) FROM message
+        WHERE conversation_id = #{conversationId}
+        AND to_user_id = #{userId}
+        AND status = 0
+    </select>
+
+    <select id="countUnreadByConversationIds" resultType="map">
+        SELECT
+            conversation_id AS conversationId,
+            COUNT(*) AS unreadCount
+        FROM message
+        WHERE to_user_id = #{userId}
+          AND status = 0
+          AND conversation_id IN
+          <foreach collection="conversationIds" item="conversationId" open="(" separator="," close=")">
+              #{conversationId}
+          </foreach>
+        GROUP BY conversation_id
+    </select>
+
+    <!-- 标记消息为已读 -->
+    <update id="markAsRead">
+        UPDATE message
+        SET status = 1
+        WHERE conversation_id = #{conversationId}
+        AND to_user_id = #{userId}
+        AND status = 0
+    </update>
+
+    <!-- 删除消息（软删除） -->
+    <update id="deleteMessage">
+        UPDATE message
+        SET status = 2
+        WHERE id = #{id}
+    </update>
+
+    <select id="existsConversationForUser" resultType="int">
+        SELECT COUNT(*)
+        FROM message
+        WHERE conversation_id = #{conversationId}
+          AND (from_user_id = #{userId} OR to_user_id = #{userId})
+          AND status != 2
+    </select>
+
+</mapper>

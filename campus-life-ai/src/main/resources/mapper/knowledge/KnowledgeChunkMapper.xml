@@ -1,0 +1,137 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="com.campus.campus_life_ai.knowledge.mapper.KnowledgeChunkMapper">
+
+    <resultMap id="KnowledgeSearchHitResultMap" type="com.campus.campus_life_ai.knowledge.service.KnowledgeSearchHit">
+        <result property="vectorId" column="vector_id"/>
+        <result property="kbId" column="kb_id"/>
+        <result property="knowledgeBaseName" column="knowledge_base_name"/>
+        <result property="documentId" column="document_id"/>
+        <result property="documentTitle" column="document_title"/>
+        <result property="chunkIndex" column="chunk_index"/>
+        <result property="content" column="content"/>
+    </resultMap>
+
+    <insert id="insert" parameterType="com.campus.campus_life_ai.knowledge.entity.KnowledgeChunk" useGeneratedKeys="true" keyProperty="id">
+        INSERT INTO ai_knowledge_chunk (
+            kb_id, document_id, vector_id, chunk_index, content, content_hash, token_count, created_at
+        ) VALUES (
+            #{kbId}, #{documentId}, #{vectorId}, #{chunkIndex}, #{content}, #{contentHash}, #{tokenCount}, #{createdAt}
+        )
+    </insert>
+
+    <delete id="deleteByDocumentId">
+        DELETE FROM ai_knowledge_chunk WHERE document_id = #{documentId}
+    </delete>
+
+    <select id="findAccessibleChunksByVectorIds" resultMap="KnowledgeSearchHitResultMap">
+        SELECT
+            c.vector_id,
+            c.kb_id,
+            b.name AS knowledge_base_name,
+            c.document_id,
+            d.title AS document_title,
+            c.chunk_index,
+            c.content
+        FROM ai_knowledge_chunk c
+        INNER JOIN ai_knowledge_document d ON d.id = c.document_id
+        INNER JOIN ai_knowledge_base b ON b.id = c.kb_id
+        WHERE b.status != 2
+          AND d.status != 2
+          AND d.parse_status = 2
+          AND c.vector_id IN
+          <foreach collection="vectorIds" item="vectorId" open="(" separator="," close=")">
+              #{vectorId}
+          </foreach>
+          AND (
+            <choose>
+                <when test="includePersonal and includePlatform">
+                    (b.owner_type = 'USER' AND b.owner_id = #{userId}
+                        <if test="knowledgeBaseIds != null and knowledgeBaseIds.size() > 0">
+                            AND b.id IN
+                            <foreach collection="knowledgeBaseIds" item="kbId" open="(" separator="," close=")">
+                                #{kbId}
+                            </foreach>
+                        </if>
+                    )
+                    OR (b.owner_type = 'PLATFORM' AND b.visibility = 'PUBLIC')
+                </when>
+                <when test="includePersonal">
+                    b.owner_type = 'USER' AND b.owner_id = #{userId}
+                    <if test="knowledgeBaseIds != null and knowledgeBaseIds.size() > 0">
+                        AND b.id IN
+                        <foreach collection="knowledgeBaseIds" item="kbId" open="(" separator="," close=")">
+                            #{kbId}
+                        </foreach>
+                    </if>
+                </when>
+                <when test="includePlatform">
+                    b.owner_type = 'PLATFORM' AND b.visibility = 'PUBLIC'
+                </when>
+                <otherwise>
+                    1 = 0
+                </otherwise>
+            </choose>
+          )
+    </select>
+
+    <select id="searchAccessibleChunks" resultMap="KnowledgeSearchHitResultMap">
+        SELECT
+            c.vector_id,
+            c.kb_id,
+            b.name AS knowledge_base_name,
+            c.document_id,
+            d.title AS document_title,
+            c.chunk_index,
+            c.content
+        FROM ai_knowledge_chunk c
+        INNER JOIN ai_knowledge_document d ON d.id = c.document_id
+        INNER JOIN ai_knowledge_base b ON b.id = c.kb_id
+        WHERE b.status != 2
+          AND d.status != 2
+          AND d.parse_status = 2
+          AND (
+            <choose>
+                <when test="includePersonal and includePlatform">
+                    (b.owner_type = 'USER' AND b.owner_id = #{userId}
+                        <if test="knowledgeBaseIds != null and knowledgeBaseIds.size() > 0">
+                            AND b.id IN
+                            <foreach collection="knowledgeBaseIds" item="kbId" open="(" separator="," close=")">
+                                #{kbId}
+                            </foreach>
+                        </if>
+                    )
+                    OR (b.owner_type = 'PLATFORM' AND b.visibility = 'PUBLIC')
+                </when>
+                <when test="includePersonal">
+                    b.owner_type = 'USER' AND b.owner_id = #{userId}
+                    <if test="knowledgeBaseIds != null and knowledgeBaseIds.size() > 0">
+                        AND b.id IN
+                        <foreach collection="knowledgeBaseIds" item="kbId" open="(" separator="," close=")">
+                            #{kbId}
+                        </foreach>
+                    </if>
+                </when>
+                <when test="includePlatform">
+                    b.owner_type = 'PLATFORM' AND b.visibility = 'PUBLIC'
+                </when>
+                <otherwise>
+                    1 = 0
+                </otherwise>
+            </choose>
+          )
+          <if test="keywords != null and keywords.size() > 0">
+              AND (
+              <foreach collection="keywords" item="keyword" separator=" OR ">
+                  (c.content LIKE CONCAT('%', #{keyword}, '%') OR d.title LIKE CONCAT('%', #{keyword}, '%'))
+              </foreach>
+              )
+          </if>
+        ORDER BY c.id DESC
+        LIMIT #{limit}
+    </select>
+
+</mapper>

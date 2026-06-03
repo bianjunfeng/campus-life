@@ -1,0 +1,74 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.campus.campus_life_backend.modules.auth.mapper.LoginAuditLogMapper">
+
+    <resultMap id="BaseResultMap" type="com.campus.campus_life_backend.modules.auth.entity.LoginAuditLog">
+        <id column="id" property="id"/>
+        <result column="user_id" property="userId"/>
+        <result column="account" property="account"/>
+        <result column="role" property="role"/>
+        <result column="login_type" property="loginType"/>
+        <result column="success" property="success"/>
+        <result column="failure_reason" property="failureReason"/>
+        <result column="ip" property="ip"/>
+        <result column="user_agent" property="userAgent"/>
+        <result column="session_id" property="sessionId"/>
+        <result column="create_time" property="createTime"/>
+    </resultMap>
+
+    <insert id="insert" parameterType="com.campus.campus_life_backend.modules.auth.entity.LoginAuditLog"
+            useGeneratedKeys="true" keyProperty="id">
+        INSERT INTO login_audit_log (
+            user_id, account, role, login_type, success, failure_reason,
+            ip, user_agent, session_id, create_time
+        ) VALUES (
+            #{userId}, #{account}, #{role}, #{loginType}, #{success}, #{failureReason},
+            #{ip}, #{userAgent}, #{sessionId}, NOW()
+        )
+    </insert>
+
+    <sql id="LoginAuditColumns">
+        l.id AS id,
+        l.user_id AS userId,
+        l.account AS account,
+        l.role AS role,
+        l.login_type AS loginType,
+        l.success AS success,
+        l.failure_reason AS failureReason,
+        l.ip AS ip,
+        l.user_agent AS userAgent,
+        l.session_id AS sessionId,
+        l.create_time AS createTime,
+        u.username AS username
+    </sql>
+
+    <select id="findMemberLoginLogs" resultType="map">
+        SELECT <include refid="LoginAuditColumns"/>
+        FROM login_audit_log l
+        LEFT JOIN `user` u ON u.id = l.user_id
+        WHERE l.role IS NULL OR l.role != 2
+        ORDER BY l.create_time DESC, l.id DESC
+        LIMIT #{limit} OFFSET #{offset}
+    </select>
+
+    <select id="countMemberLoginLogs" resultType="long">
+        SELECT COUNT(1)
+        FROM login_audit_log
+        WHERE role IS NULL OR role != 2
+    </select>
+
+    <select id="findAdminLoginLogs" resultType="map">
+        SELECT <include refid="LoginAuditColumns"/>
+        FROM login_audit_log l
+        LEFT JOIN `user` u ON u.id = l.user_id
+        WHERE l.role = 2
+        ORDER BY l.create_time DESC, l.id DESC
+        LIMIT #{limit} OFFSET #{offset}
+    </select>
+
+    <select id="countAdminLoginLogs" resultType="long">
+        SELECT COUNT(1)
+        FROM login_audit_log
+        WHERE role = 2
+    </select>
+</mapper>

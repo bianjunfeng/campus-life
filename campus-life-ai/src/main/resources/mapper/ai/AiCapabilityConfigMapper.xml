@@ -1,0 +1,68 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="com.campus.campus_life_ai.ai.mapper.AiCapabilityConfigMapper">
+
+    <resultMap id="AiCapabilityConfigResultMap" type="com.campus.campus_life_ai.ai.entity.AiCapabilityConfig">
+        <id property="id" column="id"/>
+        <result property="capabilityCode" column="capability_code"/>
+        <result property="capabilityName" column="capability_name"/>
+        <result property="enabled" column="enabled"/>
+        <result property="grayEnabled" column="gray_enabled"/>
+        <result property="grayRuleJson" column="gray_rule_json"/>
+        <result property="rateLimitJson" column="rate_limit_json"/>
+        <result property="quotaRuleJson" column="quota_rule_json"/>
+        <result property="createdAt" column="created_at"/>
+        <result property="updatedAt" column="updated_at"/>
+    </resultMap>
+
+    <select id="findAll" resultMap="AiCapabilityConfigResultMap">
+        SELECT * FROM ai_capability_config
+        ORDER BY updated_at DESC, id DESC
+    </select>
+
+    <select id="findById" resultMap="AiCapabilityConfigResultMap">
+        SELECT * FROM ai_capability_config WHERE id = #{id} LIMIT 1
+    </select>
+
+    <select id="findByCapabilityCode" resultMap="AiCapabilityConfigResultMap">
+        SELECT * FROM ai_capability_config WHERE capability_code = #{capabilityCode} LIMIT 1
+    </select>
+
+    <select id="countByCapabilityCodeExcludingId" resultType="int">
+        SELECT COUNT(1)
+        FROM ai_capability_config
+        WHERE capability_code = #{capabilityCode}
+          AND (#{id} IS NULL OR id != #{id})
+    </select>
+
+    <insert id="insert" parameterType="com.campus.campus_life_ai.ai.entity.AiCapabilityConfig" useGeneratedKeys="true" keyProperty="id">
+        INSERT INTO ai_capability_config (
+            capability_code, capability_name, enabled, gray_enabled, gray_rule_json,
+            rate_limit_json, quota_rule_json, created_at, updated_at
+        ) VALUES (
+            #{capabilityCode}, #{capabilityName}, #{enabled}, #{grayEnabled}, #{grayRuleJson},
+            #{rateLimitJson}, #{quotaRuleJson}, #{createdAt}, #{updatedAt}
+        )
+    </insert>
+
+    <update id="update" parameterType="com.campus.campus_life_ai.ai.entity.AiCapabilityConfig">
+        UPDATE ai_capability_config
+        SET capability_code = #{capabilityCode},
+            capability_name = #{capabilityName},
+            enabled = #{enabled},
+            gray_enabled = #{grayEnabled},
+            gray_rule_json = #{grayRuleJson},
+            rate_limit_json = #{rateLimitJson},
+            quota_rule_json = #{quotaRuleJson},
+            updated_at = #{updatedAt}
+        WHERE id = #{id}
+    </update>
+
+    <delete id="deleteById">
+        DELETE FROM ai_capability_config WHERE id = #{id}
+    </delete>
+
+</mapper>
