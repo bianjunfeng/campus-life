@@ -381,31 +381,6 @@ mvn test
 
 ---
 
-## 演示图
-
-如果需要在 GitHub README 中展示页面截图，可以将截图放到 `docs/images/` 目录，并按以下结构补充：
-
-```text
-docs/images/
-├── consumer/
-├── admin/
-├── merchant/
-└── ai/
-```
-
-示例：
-
-```markdown
-<table>
-  <tr>
-    <td><img src="docs/images/consumer/home.png" width="500"/></td>
-    <td><img src="docs/images/admin/dashboard.png" width="500"/></td>
-  </tr>
-</table>
-```
-
----
-
 ## 仓库规范
 
 提交前请确认以下内容未被提交：
