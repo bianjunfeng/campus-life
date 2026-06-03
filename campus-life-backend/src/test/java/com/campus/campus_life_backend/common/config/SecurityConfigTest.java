@@ -3,11 +3,13 @@ package com.campus.campus_life_backend.common.config;
 import com.campus.campus_life_backend.common.exception.BusinessErrorCode;
 import com.campus.campus_life_backend.common.security.model.LoginPrincipal;
 import com.campus.campus_life_backend.common.security.model.RoleCode;
+import com.campus.campus_life_backend.common.security.ownership.ResourceOwnershipService;
+import com.campus.campus_life_backend.common.security.service.LoginPrincipalFactory;
 import com.campus.campus_life_backend.common.security.support.CurrentUserAccessor;
 import com.campus.campus_life_backend.common.security.service.AuthorizationService;
-import com.campus.campus_life_backend.common.security.service.LoginPrincipalFactory;
 import com.campus.campus_life_backend.common.util.JwtUtil;
 import com.campus.campus_life_backend.modules.auth.service.AuthService;
+import com.campus.campus_life_backend.modules.auth.service.AuthSessionService;
 import com.campus.campus_life_backend.modules.auth.service.TokenService;
 import com.campus.campus_life_backend.modules.message.controller.MessageController;
 import com.campus.campus_life_backend.modules.message.dto.ConversationDTO;
@@ -27,6 +29,7 @@ import org.springframework.test.web.servlet.MockMvc;
 
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
@@ -35,7 +38,13 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 @WebMvcTest({SearchController.class, MessageController.class})
-@Import({SecurityConfig.class, JwtAuthenticationFilter.class})
+@Import({
+        SecurityConfig.class,
+        JwtAuthenticationFilter.class,
+        WebMvcSecurityConfig.class,
+        AuthorizationService.class,
+        CurrentUserAccessor.class
+})
 class SecurityConfigTest {
 
     @Autowired
@@ -54,10 +63,10 @@ class SecurityConfigTest {
     private LoginPrincipalFactory loginPrincipalFactory;
 
     @MockitoBean
-    private AuthorizationService authorizationService;
+    private AuthSessionService authSessionService;
 
     @MockitoBean
-    private CurrentUserAccessor currentUserAccessor;
+    private ResourceOwnershipService resourceOwnershipService;
 
     @MockitoBean
     private PostSearchService postSearchService;
@@ -100,9 +109,8 @@ class SecurityConfigTest {
         when(jwtUtil.getTokenType("valid-token")).thenReturn("access");
         when(jwtUtil.getUserIdFromToken("valid-token")).thenReturn(1L);
         when(tokenService.isAccessTokenValid(1L, "valid-token")).thenReturn(true);
-        when(loginPrincipalFactory.create(1L)).thenReturn(new LoginPrincipal(1L, RoleCode.STUDENT, java.util.Set.of()));
-        when(authService.getUserIdFromToken("valid-token")).thenReturn(1L);
-        when(currentUserAccessor.requireUserId()).thenReturn(1L);
+        when(loginPrincipalFactory.create(1L))
+                .thenReturn(new LoginPrincipal(1L, RoleCode.STUDENT, Set.of("message:use")));
         when(messageService.getConversationsByUserId(1L)).thenReturn(List.<ConversationDTO>of());
 
         mockMvc.perform(get("/api/message/conversations")
