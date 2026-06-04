@@ -96,7 +96,11 @@
           </div>
 
           <div :class="['message-content', { sent: msg.sent, error: msg.error, streaming: msg.streaming }]">
-            <p>{{ msg.text || (msg.streaming ? '正在生成...' : '') }}</p>
+            <p v-if="msg.sent">{{ msg.text }}</p>
+            <MarkdownMessage
+              v-else
+              :content="msg.text || (msg.streaming ? '正在生成...' : '')"
+            />
             <span class="message-time">{{ formatTime(msg.time) }}</span>
           </div>
 
@@ -175,6 +179,7 @@
 <script setup lang="ts">
 import { computed, nextTick, onMounted, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
+import MarkdownMessage from '../../components/MarkdownMessage.vue'
 import { createConversation, deleteConversation, getConversationDetail, sendAgentMessage, streamAgentMessage, type SendAgentMessagePayload } from '../../api/agent'
 import { listKnowledgeBases, type KnowledgeBase } from '../../api/knowledge'
 import { showAlert, showConfirm } from '../../utils/dialog'
@@ -791,7 +796,8 @@ onMounted(async () => {
   border: 1px solid #ffb3b3;
 }
 
-.message-content.streaming p::after {
+.message-content.streaming > p::after,
+.message-content.streaming :deep(.markdown-message)::after {
   content: '';
   display: inline-block;
   width: 6px;
@@ -806,7 +812,7 @@ onMounted(async () => {
   to { visibility: hidden; }
 }
 
-.message-content p {
+.message-content > p {
   margin: 0;
   white-space: pre-wrap;
   word-wrap: break-word;
@@ -886,10 +892,22 @@ onMounted(async () => {
   background: transparent;
   resize: none;
   outline: none;
-  font-size: 15px;
-  line-height: 1.5;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "Microsoft YaHei", "PingFang SC", "Hiragino Sans GB", Arial, sans-serif;
+  font-size: 16px;
+  font-weight: 400;
+  line-height: 1.6;
+  letter-spacing: 0;
+  color: #1f2937;
+  caret-color: #667eea;
   max-height: 120px;
   overflow-y: auto;
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+}
+
+.message-input::placeholder {
+  color: #9ca3af;
+  font-weight: 400;
 }
 
 .send-btn {
