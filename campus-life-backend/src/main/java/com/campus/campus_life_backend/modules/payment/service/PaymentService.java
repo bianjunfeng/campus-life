@@ -1,5 +1,6 @@
 package com.campus.campus_life_backend.modules.payment.service;
 
+import com.campus.campus_life_backend.modules.payment.dto.PaymentCallbackResult;
 import com.campus.campus_life_backend.modules.payment.dto.PaymentRequest;
 import com.campus.campus_life_backend.modules.payment.dto.PaymentResponse;
 
@@ -21,7 +22,7 @@ public interface PaymentService {
      * @param callbackData 鍥炶皟鏁版嵁
      * @return 鏄惁澶勭悊鎴愬姛
      */
-    boolean handlePaymentCallback(String paymentMethod, String callbackData);
+    PaymentCallbackResult handlePaymentCallback(String paymentMethod, String callbackData);
     
     /**
      * 鏌ヨ鏀粯鐘舵€?

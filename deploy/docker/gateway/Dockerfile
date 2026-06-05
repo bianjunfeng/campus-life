@@ -13,6 +13,10 @@ RUN mvn -DskipTests clean package
 FROM ${JRE_IMAGE}
 WORKDIR /app
 
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends curl \
+    && rm -rf /var/lib/apt/lists/*
+
 RUN useradd -r -u 10001 campus \
     && mkdir -p /app/config \
     && chown -R campus:campus /app

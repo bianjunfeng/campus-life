@@ -36,6 +36,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -106,7 +107,9 @@ class PaymentAutoRefundServiceTest {
         when(paymentOrderMapper.findLatestByBizOrderNo(eq("VOUCHER"), eq(candidate.getOrderNo()))).thenReturn(paymentOrder);
         when(paymentRefundOrderMapper.sumSuccessfulRefundAmountByPaymentNo("PAY001")).thenReturn(BigDecimal.ZERO);
         when(paymentRefundOrderMapper.findByRequestIdempotencyKey("AUTO_EXPIRE_REFUND:ORDER001")).thenReturn(null);
-        when(paymentRefundDomainService.processWalletRefund(any(PaymentRefundOrder.class), eq(expiredOrder))).thenReturn(refundResponse);
+        when(paymentService.refund(eq("PAY001"), eq(new BigDecimal("29.9")), eq("券到期自动退款"))).thenReturn(true);
+        when(paymentRefundDomainService.markRefundSuccess(any(PaymentRefundOrder.class), eq(expiredOrder)))
+                .thenReturn(refundResponse);
         when(voucherMapper.findById(candidate.getVoucherId())).thenReturn(buildVoucher(9L));
 
         int refunded = paymentAutoRefundService.autoRefundExpiredVoucherOrders(20);
@@ -118,8 +121,42 @@ class PaymentAutoRefundServiceTest {
         assertEquals("AUTO_EXPIRE_REFUND:ORDER001", inserted.getRequestIdempotencyKey());
         assertEquals(PaymentRefundStatus.PROCESSING.getCode(), inserted.getStatus());
         assertEquals(new BigDecimal("29.9"), inserted.getRefundAmount());
-        verify(paymentRefundDomainService).processWalletRefund(any(PaymentRefundOrder.class), eq(expiredOrder));
+        verify(paymentService).refund("PAY001", new BigDecimal("29.9"), "券到期自动退款");
+        verify(paymentRefundDomainService).markRefundSuccess(any(PaymentRefundOrder.class), eq(expiredOrder));
         verify(messageNotificationService).createSystemNotification(anyString(), eq("AUTO_REFUND_SUCCESS"), eq(100L), eq(1L), anyString());
+    }
+
+    @Test
+    void shouldExpireAndRefundAlipayOrderViaPaymentServiceOnly() {
+        LocalDateTime now = LocalDateTime.now().minusMinutes(5);
+        VoucherOrder candidate = buildOrder(3L, 1, 1, now.minusMinutes(1), now.minusMinutes(10));
+        VoucherOrder expiredOrder = buildOrder(3L, 3, 1, now.minusMinutes(1), now.minusMinutes(5));
+
+        PaymentOrder paymentOrder = new PaymentOrder();
+        paymentOrder.setPaymentNo("PAY003");
+        paymentOrder.setAmount(new BigDecimal("39.90"));
+        paymentOrder.setChannel("alipay");
+
+        PaymentRefundResponse refundResponse = new PaymentRefundResponse();
+        refundResponse.setRefundNo("REF003");
+        refundResponse.setRefundAmount(new BigDecimal("39.90"));
+
+        when(voucherOrderService.findExpiredPaidOrdersForAutoRefund(any(), eq(20))).thenReturn(List.of(candidate));
+        when(voucherOrderService.findById(3L)).thenReturn(candidate, expiredOrder);
+        when(voucherOrderService.markOrderExpired(eq(3L), anyString(), any())).thenReturn(true);
+        when(paymentOrderMapper.findLatestByBizOrderNo(eq("VOUCHER"), eq(candidate.getOrderNo()))).thenReturn(paymentOrder);
+        when(paymentRefundOrderMapper.sumSuccessfulRefundAmountByPaymentNo("PAY003")).thenReturn(BigDecimal.ZERO);
+        when(paymentRefundOrderMapper.findByRequestIdempotencyKey("AUTO_EXPIRE_REFUND:ORDER003")).thenReturn(null);
+        when(paymentService.refund(eq("PAY003"), eq(new BigDecimal("39.9")), eq("券到期自动退款"))).thenReturn(true);
+        when(paymentRefundDomainService.markRefundSuccess(any(PaymentRefundOrder.class), eq(expiredOrder)))
+                .thenReturn(refundResponse);
+        when(voucherMapper.findById(candidate.getVoucherId())).thenReturn(buildVoucher(9L));
+
+        int refunded = paymentAutoRefundService.autoRefundExpiredVoucherOrders(20);
+
+        assertEquals(1, refunded);
+        verify(paymentService).refund("PAY003", new BigDecimal("39.9"), "券到期自动退款");
+        verify(paymentRefundDomainService).markRefundSuccess(any(PaymentRefundOrder.class), eq(expiredOrder));
     }
 
     @Test
@@ -154,14 +191,44 @@ class PaymentAutoRefundServiceTest {
         when(paymentRefundOrderMapper.findByRequestIdempotencyKey("AUTO_EXPIRE_REFUND:ORDER002")).thenReturn(failedRefund);
         when(paymentRefundOrderMapper.markProcessingFromFailed("REF_FAILED", PaymentRefundStatus.FAILED.getCode())).thenReturn(1);
         when(paymentRefundOrderMapper.findByRefundNo("REF_FAILED")).thenReturn(processingRefund);
-        when(paymentRefundDomainService.processWalletRefund(processingRefund, expiredOrder)).thenReturn(refundResponse);
+        when(paymentService.refund("PAY002", new BigDecimal("19.90"), "券到期自动退款")).thenReturn(true);
+        when(paymentRefundDomainService.markRefundSuccess(processingRefund, expiredOrder)).thenReturn(refundResponse);
 
         int refunded = paymentAutoRefundService.autoRefundExpiredVoucherOrders(10);
 
         assertEquals(1, refunded);
         verify(paymentRefundOrderMapper).markProcessingFromFailed("REF_FAILED", PaymentRefundStatus.FAILED.getCode());
-        verify(paymentRefundDomainService).processWalletRefund(processingRefund, expiredOrder);
+        verify(paymentService).refund("PAY002", new BigDecimal("19.90"), "券到期自动退款");
+        verify(paymentRefundDomainService).markRefundSuccess(processingRefund, expiredOrder);
         verify(paymentRefundReviewLogMapper, times(2)).insert(any());
+    }
+
+    @Test
+    void shouldMarkFailedWhenWalletAutoRefundChannelFails() {
+        LocalDateTime now = LocalDateTime.now().minusMinutes(5);
+        VoucherOrder candidate = buildOrder(4L, 1, 1, now.minusMinutes(1), now.minusMinutes(10));
+        VoucherOrder expiredOrder = buildOrder(4L, 3, 1, now.minusMinutes(1), now.minusMinutes(5));
+
+        PaymentOrder paymentOrder = new PaymentOrder();
+        paymentOrder.setPaymentNo("PAY004");
+        paymentOrder.setAmount(new BigDecimal("9.90"));
+        paymentOrder.setChannel("wallet");
+
+        when(voucherOrderService.findExpiredPaidOrdersForAutoRefund(any(), eq(20))).thenReturn(List.of(candidate));
+        when(voucherOrderService.findById(4L)).thenReturn(candidate, expiredOrder);
+        when(voucherOrderService.markOrderExpired(eq(4L), anyString(), any())).thenReturn(true);
+        when(paymentOrderMapper.findLatestByBizOrderNo(eq("VOUCHER"), eq(candidate.getOrderNo()))).thenReturn(paymentOrder);
+        when(paymentRefundOrderMapper.sumSuccessfulRefundAmountByPaymentNo("PAY004")).thenReturn(BigDecimal.ZERO);
+        when(paymentRefundOrderMapper.findByRequestIdempotencyKey("AUTO_EXPIRE_REFUND:ORDER004")).thenReturn(null);
+        when(paymentService.refund(eq("PAY004"), eq(new BigDecimal("9.9")), eq("券到期自动退款"))).thenReturn(false);
+        when(voucherMapper.findById(candidate.getVoucherId())).thenReturn(buildVoucher(9L));
+
+        int refunded = paymentAutoRefundService.autoRefundExpiredVoucherOrders(20);
+
+        assertEquals(0, refunded);
+        verify(paymentRefundDomainService).markRefundFailed(any(PaymentRefundOrder.class));
+        verify(paymentRefundDomainService, never()).markRefundSuccess(any(), any());
+        verify(messageNotificationService).createSystemNotification(anyString(), eq("AUTO_REFUND_FAILED"), eq(103L), eq(1L), anyString());
     }
 
     private VoucherOrder buildOrder(Long id, Integer status, Integer paymentStatus, LocalDateTime useDeadline, LocalDateTime updateTime) {

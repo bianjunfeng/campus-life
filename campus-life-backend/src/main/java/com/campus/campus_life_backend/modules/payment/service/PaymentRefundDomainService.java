@@ -11,8 +11,6 @@ import com.campus.campus_life_backend.modules.payment.enums.PaymentRefundStatus;
 import com.campus.campus_life_backend.modules.payment.mapper.PaymentOrderMapper;
 import com.campus.campus_life_backend.modules.payment.mapper.PaymentRefundOrderMapper;
 import com.campus.campus_life_backend.modules.order.service.VoucherOrderService;
-import com.campus.campus_life_backend.modules.user.mapper.UserWalletMapper;
-import com.campus.campus_life_backend.modules.user.mapper.WalletTransactionMapper;
 import com.campus.campus_life_backend.modules.order.entity.VoucherOrder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -31,23 +29,17 @@ public class PaymentRefundDomainService {
     private final PaymentOrderMapper paymentOrderMapper;
     private final PaymentRefundOrderMapper paymentRefundOrderMapper;
     private final VoucherOrderService voucherOrderService;
-    private final UserWalletMapper userWalletMapper;
-    private final WalletTransactionMapper walletTransactionMapper;
     private final VoucherOrderKafkaEventPublisher voucherOrderKafkaEventPublisher;
 
     public PaymentRefundDomainService(
             PaymentOrderMapper paymentOrderMapper,
             PaymentRefundOrderMapper paymentRefundOrderMapper,
             VoucherOrderService voucherOrderService,
-            UserWalletMapper userWalletMapper,
-            WalletTransactionMapper walletTransactionMapper,
             VoucherOrderKafkaEventPublisher voucherOrderKafkaEventPublisher
     ) {
         this.paymentOrderMapper = paymentOrderMapper;
         this.paymentRefundOrderMapper = paymentRefundOrderMapper;
         this.voucherOrderService = voucherOrderService;
-        this.userWalletMapper = userWalletMapper;
-        this.walletTransactionMapper = walletTransactionMapper;
         this.voucherOrderKafkaEventPublisher = voucherOrderKafkaEventPublisher;
     }
 
@@ -137,39 +129,9 @@ public class PaymentRefundDomainService {
         paymentRefundOrderMapper.markFailed(refundOrder.getRefundNo(), PaymentRefundStatus.PROCESSING.getCode());
     }
 
-    @Transactional
-    public PaymentRefundResponse processWalletRefund(PaymentRefundOrder refundOrder, VoucherOrder voucherOrder) {
-        if (refundOrder == null || voucherOrder == null) {
-            throw new IllegalArgumentException("退款单不存在");
-        }
-        userWalletMapper.initWalletIfAbsent(voucherOrder.getUserId(), BigDecimal.ZERO);
-        int updated = userWalletMapper.addBalanceAndReduceSpent(voucherOrder.getUserId(), refundOrder.getRefundAmount());
-        if (updated <= 0) {
-            throw new IllegalStateException("钱包退款入账失败");
-        }
-        recordWalletRefundTransaction(voucherOrder, refundOrder);
-        return markRefundSuccess(refundOrder, voucherOrder);
-    }
-
     private String generateRefundNo() {
         return "R" + LocalDateTime.now().format(REFUND_NO_FORMATTER)
                 + ThreadLocalRandom.current().nextInt(100000, 999999);
-    }
-
-    private void recordWalletRefundTransaction(VoucherOrder voucherOrder, PaymentRefundOrder refundOrder) {
-        var wallet = userWalletMapper.findByUserId(voucherOrder.getUserId());
-        BigDecimal balanceAfter = wallet != null && wallet.get("balance") instanceof BigDecimal
-                ? (BigDecimal) wallet.get("balance")
-                : BigDecimal.ZERO;
-        walletTransactionMapper.insertRefundTransaction(
-                voucherOrder.getUserId(),
-                refundOrder.getRefundAmount(),
-                balanceAfter,
-                voucherOrder.getOrderNo(),
-                refundOrder.getReason() == null || refundOrder.getReason().isBlank()
-                        ? "钱包退款"
-                        : "钱包退款：" + refundOrder.getReason()
-        );
     }
 
     private void publishOrderRefundedEvent(

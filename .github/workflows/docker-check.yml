@@ -1,0 +1,19 @@
+name: Docker Deploy Check
+
+on:
+  push:
+    paths:
+      - 'deploy/docker/**'
+      - 'deploy/database/**'
+  pull_request:
+    paths:
+      - 'deploy/docker/**'
+      - 'deploy/database/**'
+
+jobs:
+  database-dumps:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Verify database snapshot files exist
+        run: bash deploy/docker/scripts/check-database-dumps.sh

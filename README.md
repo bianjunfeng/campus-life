@@ -19,8 +19,6 @@
 
 > **声明**
 >
-> 本项目用于校园生活平台相关业务的工程实践。公开发布前请确认已移除真实账号、密码、Token、支付私钥、OSS 密钥、数据库地址和大模型 API Key 等敏感信息。
->
 > 项目中的第三方服务、测试数据、素材和部署配置需要根据实际使用场景自行替换，并确保合法合规。
 
 ---
@@ -51,7 +49,9 @@ Campus Life 是一个前后端分离的校园生活服务平台，包含用户�
 | **campus-life-backend** | 主业务后端服务 | Spring Boot、Spring Security、MyBatis、MySQL、Redis、RabbitMQ、Kafka、Elasticsearch | `8080` |
 | **campus-life-ai** | AI 微服务 | Spring Boot、Spring AI、MyBatis、MySQL、Milvus、OpenAI 兼容接口 | `8083` |
 | **campus-life-gateway** | API 网关服务 | Spring Cloud Gateway、Redis RateLimiter、JWT、Micrometer | `8090` |
-| **deploy/demo** | 示例部署配置 | Docker Compose、Nginx、systemd | - |
+| **deploy/docker** | **L1/L2 全栈 Docker 部署** | Docker Compose、Nginx、MySQL、Redis、RabbitMQ | `80`（可改 `HTTP_PORT`） |
+| **deploy/middleware** | 本地开发中间件 | 仅 MySQL、Redis、RabbitMQ | `3307`、`6379`、`5672` |
+| **deploy/demo** | 裸机示例部署 | systemd、Nginx | - |
 | **docs** | 架构与模块设计文档 | Markdown | - |
 | **perf** | 压测脚本和报告 | JMeter、测试结果报告 | - |
 
@@ -203,11 +203,13 @@ powershell -ExecutionPolicy Bypass -File .\restart-local-middleware.ps1 -UseDock
 powershell -ExecutionPolicy Bypass -File .\restart-local-middleware.ps1 -StatusOnly
 ```
 
-也可以使用 Docker Compose 启动示例 Redis 和 RabbitMQ：
+也可以使用 Docker Compose 仅启动本地中间件：
 
 ```powershell
-docker compose -f .\deploy\demo\docker-compose.yml up -d redis rabbitmq
+docker compose -f .\deploy\middleware\docker-compose.yml up -d
 ```
+
+云服务器 **全栈一键部署（L1 演示 / L2 含 Kafka+ES+Milvus）** 见 [`deploy/docker/README.md`](deploy/docker/README.md)。
 
 ### 启动项目服务
 
@@ -378,31 +380,6 @@ mvn test
 | `deploy/demo/DEPLOY_CN.md` | 中文部署文档 |
 | `docs/技术架构文档.md` | 技术架构说明 |
 | `docs/微服务架构_DDD转型可行性分析.md` | 架构演进分析 |
-
----
-
-## 演示图
-
-如果需要在 GitHub README 中展示页面截图，可以将截图放到 `docs/images/` 目录，并按以下结构补充：
-
-```text
-docs/images/
-├── consumer/
-├── admin/
-├── merchant/
-└── ai/
-```
-
-示例：
-
-```markdown
-<table>
-  <tr>
-    <td><img src="docs/images/consumer/home.png" width="500"/></td>
-    <td><img src="docs/images/admin/dashboard.png" width="500"/></td>
-  </tr>
-</table>
-```
 
 ---
 

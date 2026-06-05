@@ -1,0 +1,160 @@
+# 本地开发中间件（仅 MySQL / Redis / RabbitMQ，不含业务应用）
+
+# 全栈 Docker 部署请使用 deploy/docker/
+
+
+
+services:
+
+  mysql:
+
+    image: mysql:8.0
+
+    container_name: campus-life-mysql
+
+    restart: unless-stopped
+
+    environment:
+
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD:-root123456}
+
+      MYSQL_DATABASE: ${MYSQL_DATABASE:-campus_life}
+
+      MYSQL_USER: ${MYSQL_USER:-campus}
+
+      MYSQL_PASSWORD: ${MYSQL_PASSWORD:-campus123456}
+
+      AI_MYSQL_DATABASE: ${AI_MYSQL_DATABASE:-campus_life_ai}
+
+      AI_MYSQL_USER: ${AI_MYSQL_USER:-campus_life_ai_user}
+
+      AI_MYSQL_PASSWORD: ${AI_MYSQL_PASSWORD:-campus_ai_password}
+
+      DB_INIT_MODE: ${DB_INIT_MODE:-full}
+
+      AI_DB_INIT_MODE: ${AI_DB_INIT_MODE:-full}
+
+      TZ: Asia/Shanghai
+
+    command:
+
+      - --default-authentication-plugin=mysql_native_password
+
+      - --character-set-server=utf8mb4
+
+      - --collation-server=utf8mb4_unicode_ci
+
+      - --default-time-zone=+08:00
+
+    ports:
+
+      - "127.0.0.1:3307:3306"
+
+    volumes:
+
+      - mysql_data:/var/lib/mysql
+
+      - ../docker/mysql/init/10-init-main-db.sh:/docker-entrypoint-initdb.d/10-init-main-db.sh:ro
+
+      - ../docker/mysql/init/20-init-ai-db.sh:/docker-entrypoint-initdb.d/20-init-ai-db.sh:ro
+
+      - ../database/campus_life:/docker-entrypoint-initdb.d/dumps/campus_life:ro
+
+      - ../database/campus_life_ai:/docker-entrypoint-initdb.d/dumps/campus_life_ai:ro
+
+    healthcheck:
+
+      test: ["CMD-SHELL", "mysqladmin ping -h 127.0.0.1 -uroot -p\"$$MYSQL_ROOT_PASSWORD\" --silent"]
+
+      interval: 10s
+
+      timeout: 5s
+
+      retries: 20
+
+      start_period: 30s
+
+
+
+  redis:
+
+    image: redis:7-alpine
+
+    container_name: campus-life-redis
+
+    restart: unless-stopped
+
+    command: ["redis-server", "--appendonly", "yes"]
+
+    ports:
+
+      - "127.0.0.1:6379:6379"
+
+    volumes:
+
+      - redis_data:/data
+
+    healthcheck:
+
+      test: ["CMD", "redis-cli", "ping"]
+
+      interval: 10s
+
+      timeout: 5s
+
+      retries: 20
+
+
+
+  rabbitmq:
+
+    image: rabbitmq:3-management
+
+    container_name: campus-life-rabbitmq
+
+    restart: unless-stopped
+
+    environment:
+
+      RABBITMQ_DEFAULT_USER: ${RABBITMQ_DEFAULT_USER:-guest}
+
+      RABBITMQ_DEFAULT_PASS: ${RABBITMQ_DEFAULT_PASS:-guest}
+
+      TZ: Asia/Shanghai
+
+    ports:
+
+      - "127.0.0.1:5672:5672"
+
+      - "127.0.0.1:15672:15672"
+
+    volumes:
+
+      - rabbitmq_data:/var/lib/rabbitmq
+
+    healthcheck:
+
+      test: ["CMD-SHELL", "rabbitmq-diagnostics -q ping"]
+
+      interval: 10s
+
+      timeout: 5s
+
+      retries: 20
+
+
+
+volumes:
+
+  mysql_data:
+
+    name: campus_life_middleware_mysql_data
+
+  redis_data:
+
+    name: campus_life_middleware_redis_data
+
+  rabbitmq_data:
+
+    name: campus_life_middleware_rabbitmq_data
+

@@ -1,21 +1,20 @@
 package com.campus.campus_life_backend.modules.payment.controller;
 
-import com.alipay.api.AlipayApiException;
-import com.alipay.api.internal.util.AlipaySignature;
 import com.campus.campus_life_backend.common.exception.BusinessErrorCode;
 import com.campus.campus_life_backend.common.exception.BusinessException;
 import com.campus.campus_life_backend.common.result.ApiResponse;
 import com.campus.campus_life_backend.common.security.annotation.RequireLogin;
 import com.campus.campus_life_backend.common.security.support.CurrentUserAccessor;
 import com.campus.campus_life_backend.modules.order.service.OrderFacadeService;
+import com.campus.campus_life_backend.modules.payment.dto.PaymentCallbackResult;
 import com.campus.campus_life_backend.modules.payment.dto.PaymentRequest;
 import com.campus.campus_life_backend.modules.payment.dto.PaymentRefundRequest;
 import com.campus.campus_life_backend.modules.payment.dto.PaymentRefundResponse;
 import com.campus.campus_life_backend.modules.payment.dto.PaymentResponse;
 import com.campus.campus_life_backend.modules.payment.entity.PaymentOrder;
-import com.campus.campus_life_backend.modules.payment.enums.PaymentMethod;
-import com.campus.campus_life_backend.modules.payment.service.PaymentCallbackService;
+import com.campus.campus_life_backend.modules.payment.service.PaymentCreateOrchestrator;
 import com.campus.campus_life_backend.modules.payment.service.PaymentIdempotencyService;
+import com.campus.campus_life_backend.modules.payment.service.PaymentIdempotencyService.IdempotencyLock;
 import com.campus.campus_life_backend.modules.payment.service.PaymentOrderDomainService;
 import com.campus.campus_life_backend.modules.payment.service.PaymentService;
 import com.campus.campus_life_backend.modules.payment.service.PaymentRefundWorkflowService;
@@ -32,8 +31,8 @@ import java.math.BigDecimal;
 import java.net.URI;
 import java.net.URLDecoder;
 import java.nio.charset.StandardCharsets;
-import java.time.Duration;
 import java.time.LocalDateTime;
+import java.util.Optional;
 import java.util.HashMap;
 import java.util.Map;
 
@@ -45,20 +44,11 @@ public class PaymentController {
 
     private final CurrentUserAccessor currentUserAccessor;
     private final PaymentService paymentService;
-    private final PaymentCallbackService paymentCallbackService;
+    private final PaymentCreateOrchestrator paymentCreateOrchestrator;
     private final PaymentIdempotencyService paymentIdempotencyService;
     private final PaymentOrderDomainService paymentOrderDomainService;
     private final PaymentRefundWorkflowService paymentRefundWorkflowService;
     private final OrderFacadeService orderFacadeService;
-
-    @Value("${payment.alipay.public-key:}")
-    private String alipayPublicKey;
-
-    @Value("${payment.alipay.charset:UTF-8}")
-    private String alipayCharset;
-
-    @Value("${payment.alipay.skip-notify-sign-verify:false}")
-    private boolean skipAlipayNotifySignVerify;
 
     @Value("${payment.frontend-base-url:http://localhost:5173}")
     private String frontendBaseUrl;
@@ -66,7 +56,7 @@ public class PaymentController {
     public PaymentController(
             CurrentUserAccessor currentUserAccessor,
             PaymentService paymentService,
-            PaymentCallbackService paymentCallbackService,
+            PaymentCreateOrchestrator paymentCreateOrchestrator,
             PaymentIdempotencyService paymentIdempotencyService,
             PaymentOrderDomainService paymentOrderDomainService,
             PaymentRefundWorkflowService paymentRefundWorkflowService,
@@ -74,7 +64,7 @@ public class PaymentController {
     ) {
         this.currentUserAccessor = currentUserAccessor;
         this.paymentService = paymentService;
-        this.paymentCallbackService = paymentCallbackService;
+        this.paymentCreateOrchestrator = paymentCreateOrchestrator;
         this.paymentIdempotencyService = paymentIdempotencyService;
         this.paymentOrderDomainService = paymentOrderDomainService;
         this.paymentRefundWorkflowService = paymentRefundWorkflowService;
@@ -117,53 +107,26 @@ public class PaymentController {
                 userId,
                 request.getPaymentMethod()
         );
-        boolean acquired = paymentIdempotencyService.acquireCreate(createKey, Duration.ofSeconds(8));
-        if (!acquired) {
+        Optional<IdempotencyLock> idempotencyLock = paymentIdempotencyService.tryAcquireCreate(
+                createKey,
+                PaymentIdempotencyService.CREATE_PROCESSING_TTL
+        );
+        if (idempotencyLock.isEmpty()) {
             throw new BusinessException(BusinessErrorCode.CONFLICT, "支付请求处理中，请勿重复提交");
         }
         orderFacadeService.bindPaymentIdempotencyKeyIfPending(order.getId(), createKey);
 
         try {
-            if (PaymentMethod.WALLET.getCode().equals(request.getPaymentMethod())) {
-                PaymentOrder paymentOrder = paymentOrderDomainService.createVoucherPaymentOrder(
-                        order,
-                        userId,
-                        request.getPaymentMethod(),
-                        request.getSubject(),
-                        request.getDescription(),
-                        createKey
-                );
-                paymentCallbackService.payByWallet(order, paymentOrder, userId);
-                PaymentResponse response = new PaymentResponse();
-                response.setPaymentMethod(PaymentMethod.WALLET.getCode());
-                response.setPaymentOrderNo(paymentOrder.getPaymentNo());
-                return ApiResponse.success(response);
-            }
-
-            PaymentOrder paymentOrder = paymentOrderDomainService.createVoucherPaymentOrder(
-                    order,
-                    userId,
-                    request.getPaymentMethod(),
-                    request.getSubject(),
-                    request.getDescription(),
-                    createKey
-            );
-            if ("SUCCESS".equals(paymentOrder.getStatus())) {
-                throw new BusinessException(BusinessErrorCode.PAYMENT_STATUS_CHANGED, "订单已支付");
-            }
-
-            PaymentRequest channelRequest = buildChannelPaymentRequest(request, paymentOrder.getPaymentNo());
-            PaymentResponse response = paymentService.createPayment(channelRequest);
-            paymentOrderDomainService.markWaitingForPay(paymentOrder);
-            response.setPaymentOrderNo(paymentOrder.getPaymentNo());
+            PaymentResponse response = paymentCreateOrchestrator.create(order, userId, request, createKey);
+            paymentIdempotencyService.completeCreate(idempotencyLock.get());
             return ApiResponse.success(response);
         } catch (BusinessException e) {
+            paymentIdempotencyService.releaseCreate(idempotencyLock.get());
             throw e;
         } catch (Exception e) {
+            paymentIdempotencyService.releaseCreate(idempotencyLock.get());
             logger.error("创建支付订单失败", e);
             throw new BusinessException(BusinessErrorCode.PAYMENT_CREATE_FAILED, "创建支付订单失败，请稍后重试", e);
-        } finally {
-            paymentIdempotencyService.releaseCreate(createKey);
         }
     }
 
@@ -250,31 +213,35 @@ public class PaymentController {
         }
 
         String refundKey = paymentIdempotencyService.resolveRefundKey(idempotencyKey, paymentOrder.getPaymentNo(), userId);
-        boolean acquired = paymentIdempotencyService.acquireRefund(refundKey, Duration.ofSeconds(8));
-        if (!acquired) {
+        Optional<IdempotencyLock> idempotencyLock = paymentIdempotencyService.tryAcquireRefund(
+                refundKey,
+                PaymentIdempotencyService.REFUND_PROCESSING_TTL
+        );
+        if (idempotencyLock.isEmpty()) {
             throw new BusinessException(BusinessErrorCode.CONFLICT, "退款请求处理中，请勿重复提交");
         }
 
         try {
-            return ApiResponse.success(
-                    paymentRefundWorkflowService.submitVoucherRefundApplication(
-                            paymentOrder,
-                            order,
-                            userId,
-                            request.getRefundAmount().stripTrailingZeros(),
-                            request.getReason(),
-                            refundKey
-                    )
+            PaymentRefundResponse refundResponse = paymentRefundWorkflowService.submitVoucherRefundApplication(
+                    paymentOrder,
+                    order,
+                    userId,
+                    request.getRefundAmount().stripTrailingZeros(),
+                    request.getReason(),
+                    refundKey
             );
+            paymentIdempotencyService.completeRefund(idempotencyLock.get());
+            return ApiResponse.success(refundResponse);
         } catch (BusinessException e) {
+            paymentIdempotencyService.releaseRefund(idempotencyLock.get());
             throw e;
         } catch (IllegalArgumentException e) {
+            paymentIdempotencyService.releaseRefund(idempotencyLock.get());
             throw new BusinessException(BusinessErrorCode.INVALID_PARAM, e.getMessage(), e);
         } catch (Exception e) {
+            paymentIdempotencyService.releaseRefund(idempotencyLock.get());
             logger.error("提交退款申请失败", e);
             throw new BusinessException(BusinessErrorCode.INTERNAL_ERROR, "提交退款申请失败，请稍后重试", e);
-        } finally {
-            paymentIdempotencyService.releaseRefund(refundKey);
         }
     }
 
@@ -305,28 +272,17 @@ public class PaymentController {
         String callbackData = buildCallbackData(params);
 
         try {
-            if (!verifyAlipaySignature(params)) {
-                logger.warn("支付宝回调签名校验失败");
-                saveAlipayCallbackLog(paymentNo, bizOrderNo, callbackData, false, false, "FAILED", "SIGNATURE_INVALID");
-                return "fail";
-            }
-            if (!verifyAlipayOrderAmount(params)) {
-                logger.warn("支付宝回调金额校验失败");
-                saveAlipayCallbackLog(paymentNo, bizOrderNo, callbackData, true, false, "FAILED", "AMOUNT_MISMATCH");
-                return "fail";
-            }
-
-            boolean success = paymentService.handlePaymentCallback("alipay", callbackData);
+            PaymentCallbackResult result = paymentService.handlePaymentCallback("alipay", callbackData);
             saveAlipayCallbackLog(
                     paymentNo,
                     bizOrderNo,
                     callbackData,
-                    true,
-                    true,
-                    success ? "PROCESSED" : "FAILED",
-                    success ? null : "PROCESS_CALLBACK_FAILED"
+                    result.isSignatureVerified(),
+                    result.isAmountVerified(),
+                    result.isSuccess() ? "PROCESSED" : "FAILED",
+                    result.getErrorCode()
             );
-            return success ? "success" : "fail";
+            return result.isSuccess() ? "success" : "fail";
         } catch (Exception e) {
             logger.error("处理支付宝回调失败", e);
             saveAlipayCallbackLog(paymentNo, bizOrderNo, callbackData, true, true, "FAILED", e.getMessage());
@@ -352,76 +308,11 @@ public class PaymentController {
         logger.info("收到微信支付回调: {}", body);
 
         try {
-            boolean success = paymentService.handlePaymentCallback("wechat", body);
-            return success ? "success" : "fail";
+            PaymentCallbackResult result = paymentService.handlePaymentCallback("wechat", body);
+            return result.isSuccess() ? "success" : "fail";
         } catch (Exception e) {
             logger.error("处理微信支付回调失败", e);
             return "fail";
-        }
-    }
-
-    private PaymentRequest buildChannelPaymentRequest(PaymentRequest request, String paymentNo) {
-        PaymentRequest channelRequest = new PaymentRequest();
-        channelRequest.setOrderNo(paymentNo);
-        channelRequest.setPaymentMethod(request.getPaymentMethod());
-        channelRequest.setAmount(request.getAmount());
-        channelRequest.setSubject(request.getSubject());
-        channelRequest.setDescription(request.getDescription());
-        channelRequest.setPassbackParams(request.getPassbackParams());
-        return channelRequest;
-    }
-
-    private boolean verifyAlipaySignature(Map<String, String> params) throws AlipayApiException {
-        if (skipAlipayNotifySignVerify) {
-            logger.warn("已启用支付宝回调跳过验签（仅开发/沙箱环境）");
-            return true;
-        }
-        if (alipayPublicKey == null || alipayPublicKey.isBlank()) {
-            logger.error("支付宝公钥未配置，拒绝处理回调");
-            return false;
-        }
-        String signType = params.getOrDefault("sign_type", "RSA2");
-        return AlipaySignature.rsaCheckV1(params, alipayPublicKey, alipayCharset, signType);
-    }
-
-    private boolean verifyAlipayOrderAmount(Map<String, String> params) {
-        String paymentNo = params.get("out_trade_no");
-        String totalAmount = params.get("total_amount");
-        if (paymentNo == null || paymentNo.isBlank() || totalAmount == null || totalAmount.isBlank()) {
-            logger.warn("支付宝回调缺少支付单号或金额: paymentNo={}, totalAmount={}", paymentNo, totalAmount);
-            return false;
-        }
-
-        BigDecimal expectedAmount = normalizeAmount(paymentOrderDomainService.getExpectedAmountByPaymentNo(paymentNo));
-        if (expectedAmount == null) {
-            logger.warn("支付宝回调对应支付单不存在: paymentNo={}", paymentNo);
-            return false;
-        }
-
-        BigDecimal paidAmount = parseAmount(totalAmount);
-        if (paidAmount == null) {
-            logger.warn("支付宝回调金额格式非法: paymentNo={}, expectedAmount={}, paidAmount={}",
-                    paymentNo, expectedAmount, totalAmount);
-            return false;
-        }
-
-        boolean matched = expectedAmount.compareTo(paidAmount) == 0;
-        if (!matched) {
-            logger.warn("支付宝回调金额不匹配: paymentNo={}, expectedAmount={}, paidAmount={}",
-                    paymentNo, expectedAmount, paidAmount);
-        }
-        return matched;
-    }
-
-    private BigDecimal normalizeAmount(BigDecimal amount) {
-        return amount == null ? null : amount.stripTrailingZeros();
-    }
-
-    private BigDecimal parseAmount(String amountText) {
-        try {
-            return new BigDecimal(amountText).stripTrailingZeros();
-        } catch (Exception e) {
-            return null;
         }
     }
 
@@ -434,6 +325,10 @@ public class PaymentController {
             callbackData.append(key).append("=").append(value);
         });
         return callbackData.toString();
+    }
+
+    private BigDecimal normalizeAmount(BigDecimal amount) {
+        return amount == null ? null : amount.stripTrailingZeros();
     }
 
     private void saveAlipayCallbackLog(

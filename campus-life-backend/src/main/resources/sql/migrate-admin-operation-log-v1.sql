@@ -1,4 +1,4 @@
--- 创建管理员操作日志表
+-- 管理员操作日志表（管理端 /api/admin/operation-logs）
 CREATE TABLE IF NOT EXISTS `admin_operation_log` (
     `id`                BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
     `admin_id`          BIGINT UNSIGNED NOT NULL COMMENT '操作管理员ID',
@@ -18,4 +18,3 @@ CREATE TABLE IF NOT EXISTS `admin_operation_log` (
     KEY `idx_create_time` (`create_time`),
     CONSTRAINT `fk_admin_operation_log_admin` FOREIGN KEY (`admin_id`) REFERENCES `user`(`id`) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='管理员操作日志表';
-

@@ -5,7 +5,7 @@
 ### 1. 后端实现
 
 #### ✅ 数据库表
-- `admin_operation_log` 表（SQL文件：`create-admin-operation-log-table.sql`）
+- `admin_operation_log` 表（见 `src/main/resources/sql/migrate-admin-operation-log-v1.sql`，或 Docker 快照 `deploy/database/campus_life/`）
   - 记录所有管理操作
   - 包含操作类型、目标类型、操作动作、状态变更、操作原因、IP地址等
 
@@ -100,15 +100,16 @@
 ### 3. 数据库
 
 #### ⏳ 执行SQL
-- 需要执行 `create-admin-operation-log-table.sql` 创建操作日志表
+- 新环境：使用 `deploy/database` 的 `schema.sql` / `full.sql` 初始化，或手动执行 `migrate-admin-operation-log-v1.sql`
 
 ## 使用说明
 
 ### 1. 创建数据库表
 
-执行以下SQL：
-```sql
--- 见文件：create-admin-operation-log-table.sql
+新库已通过 `deploy/database` 或 `migrate-admin-operation-log-v1.sql` 包含该表；旧库可执行：
+
+```bash
+mysql ... campus_life < src/main/resources/sql/migrate-admin-operation-log-v1.sql
 ```
 
 ### 2. 后端接口测试

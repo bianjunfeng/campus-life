@@ -129,25 +129,20 @@ public class PaymentAutoRefundService {
         }
 
         try {
-            PaymentRefundResponse response;
-            if ("wallet".equalsIgnoreCase(paymentOrder.getChannel())) {
-                response = paymentRefundDomainService.processWalletRefund(refundOrder, latestOrder);
-            } else {
-                boolean success = paymentService.refund(
-                        paymentOrder.getPaymentNo(),
-                        refundOrder.getRefundAmount(),
-                        refundOrder.getReason()
-                );
-                if (!success) {
-                    paymentRefundDomainService.markRefundFailed(refundOrder);
-                    insertReviewLog(refundOrder.getRefundNo(), "SYSTEM_AUTO_REFUND_FAILED",
-                            PaymentRefundStatus.PROCESSING.getCode(), PaymentRefundStatus.FAILED.getCode(), "渠道退款失败");
-                    notifyUser(latestOrder.getUserId(), "AUTO_REFUND_FAILED",
-                            String.format("订单%s 已过期，但自动退款失败，请联系平台处理", latestOrder.getOrderNo()));
-                    return false;
-                }
-                response = paymentRefundDomainService.markRefundSuccess(refundOrder, latestOrder);
+            boolean success = paymentService.refund(
+                    paymentOrder.getPaymentNo(),
+                    refundOrder.getRefundAmount(),
+                    refundOrder.getReason()
+            );
+            if (!success) {
+                paymentRefundDomainService.markRefundFailed(refundOrder);
+                insertReviewLog(refundOrder.getRefundNo(), "SYSTEM_AUTO_REFUND_FAILED",
+                        PaymentRefundStatus.PROCESSING.getCode(), PaymentRefundStatus.FAILED.getCode(), "渠道退款失败");
+                notifyUser(latestOrder.getUserId(), "AUTO_REFUND_FAILED",
+                        String.format("订单%s 已过期，但自动退款失败，请联系平台处理", latestOrder.getOrderNo()));
+                return false;
             }
+            PaymentRefundResponse response = paymentRefundDomainService.markRefundSuccess(refundOrder, latestOrder);
             insertReviewLog(refundOrder.getRefundNo(), "SYSTEM_AUTO_REFUND_SUCCESS",
                     PaymentRefundStatus.PROCESSING.getCode(), PaymentRefundStatus.SUCCESS.getCode(), AUTO_REFUND_REASON);
             notifyUser(latestOrder.getUserId(), "AUTO_REFUND_SUCCESS",

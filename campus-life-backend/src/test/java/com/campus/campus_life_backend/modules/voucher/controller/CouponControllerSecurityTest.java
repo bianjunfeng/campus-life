@@ -11,6 +11,7 @@ import com.campus.campus_life_backend.common.security.service.AuthorizationServi
 import com.campus.campus_life_backend.common.security.service.LoginPrincipalFactory;
 import com.campus.campus_life_backend.common.security.support.CurrentUserAccessor;
 import com.campus.campus_life_backend.common.util.JwtUtil;
+import com.campus.campus_life_backend.modules.auth.service.AuthSessionService;
 import com.campus.campus_life_backend.modules.auth.service.TokenService;
 import com.campus.campus_life_backend.modules.voucher.service.VoucherSeckillService;
 import com.campus.campus_life_backend.modules.voucher.service.WelfareQueryService;
@@ -50,6 +51,9 @@ class CouponControllerSecurityTest {
 
     @MockitoBean
     private TokenService tokenService;
+
+    @MockitoBean
+    private AuthSessionService authSessionService;
 
     @MockitoBean
     private LoginPrincipalFactory loginPrincipalFactory;

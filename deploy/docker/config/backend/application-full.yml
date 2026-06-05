@@ -1,0 +1,33 @@
+# L2 标准栈：配合 COMPOSE_PROFILES=full 与 --spring.profiles.active=docker,full
+spring:
+  elasticsearch:
+    uris: http://elasticsearch:9200
+  kafka:
+    bootstrap-servers: kafka:9092
+    listener:
+      missing-topics-fatal: false
+
+event:
+  monitoring:
+    enabled: true
+    kafka-lag:
+      enabled: true
+  outbox:
+    enabled: true
+
+management:
+  health:
+    elasticsearch:
+      enabled: true
+
+search:
+  kafka:
+    enabled: true
+  es:
+    enabled: true
+  compensation:
+    enabled: true
+
+notification:
+  kafka:
+    enabled: true

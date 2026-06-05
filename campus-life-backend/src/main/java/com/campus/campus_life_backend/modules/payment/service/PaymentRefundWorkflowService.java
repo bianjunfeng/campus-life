@@ -366,9 +366,6 @@ public class PaymentRefundWorkflowService {
 
     private PaymentRefundResponse executeApprovedRefund(PaymentRefundOrder refundOrder, VoucherOrder voucherOrder, PaymentOrder paymentOrder) {
         try {
-            if ("wallet".equalsIgnoreCase(paymentOrder.getChannel())) {
-                return paymentRefundDomainService.processWalletRefund(refundOrder, voucherOrder);
-            }
             boolean success = paymentService.refund(
                     paymentOrder.getPaymentNo(),
                     refundOrder.getRefundAmount(),

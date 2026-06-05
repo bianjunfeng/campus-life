@@ -1,23 +1,29 @@
 # Campus Life Docker 一键部署
 
-这套配置独立于 `deploy/demo` 的 systemd 部署方案，目标是在云服务器上用 Docker Compose 一次性启动：
+独立于 `deploy/demo`（systemd 裸机）与 `deploy/middleware`（仅本地中间件）。在云服务器上用 Docker Compose 启动完整业务链路。
 
-- 前端 Nginx：用户端、商家端、管理端静态资源和 `/api` 反向代理
-- `campus-life-gateway`
-- `campus-life-backend`
-- `campus-life-ai`
-- MySQL、Redis、RabbitMQ
+## 部署档位
 
-默认关闭 Kafka、Elasticsearch、Milvus、微信支付和支付宝支付，适合先把公网演示环境跑起来。需要展示支付宝沙箱或 AI 大模型时，再在 `.env` 中打开对应配置。
+| 档位 | 命令 | 包含服务 | 建议配置 |
+|------|------|----------|----------|
+| **L1 演示栈** | `docker compose up -d --build` | 三端前端 + Gateway + Backend + AI + MySQL + Redis + RabbitMQ | 2C4G+ |
+| **L2 标准栈** | `COMPOSE_PROFILES=full docker compose -f docker-compose.yml -f docker-compose.full.yml up -d --build` | L1 + Kafka + Elasticsearch + Milvus（etcd/minio） | 4C8G+ |
+
+**L1 默认关闭**：Kafka 搜索同步、ES、Milvus 向量、微信/支付宝（可在 `.env` 按需打开支付与 AI Key）。
+
+**L2 启用后**：后端 `spring.profiles.active=docker,full`（搜索 Kafka/ES、事件 outbox）；AI 开启 Milvus 向量检索（需 `AI_OPENAI_COMPATIBLE` 做 embedding 时配置 Key）。
+
+迁移清单见 `deploy/database/README.md`（从运行库导出的 `schema.sql` / `full.sql`）。
 
 ## 1. 服务器准备
 
 推荐配置：
 
 ```text
-最低：2 vCPU / 4 GB RAM
-推荐：4 vCPU / 8 GB RAM
+L1 最低：2 vCPU / 4 GB RAM
+L2 推荐：4 vCPU / 8 GB RAM（Elasticsearch + Milvus 较吃内存）
 系统：Ubuntu 22.04 或 24.04
+Docker Compose V2.24+（支持 depends_on.required）
 ```
 
 安装 Docker：
@@ -115,8 +121,19 @@ AI_OPENAI_COMPATIBLE_MODEL=qwen-plus
 在 `deploy/docker` 目录执行：
 
 ```bash
+chmod +x scripts/*.sh
+./scripts/validate-env.sh
 docker compose up -d --build
 ```
+
+**L2 标准栈**（Kafka + ES + Milvus）：
+
+```bash
+./scripts/validate-env.sh
+COMPOSE_PROFILES=full docker compose -f docker-compose.yml -f docker-compose.full.yml up -d --build
+```
+
+`validate-env.sh` 会拒绝仍含 `CHANGE_ME` 的密钥；本地调试可临时跳过。
 
 第一次启动会做几件事：
 
@@ -164,11 +181,30 @@ http://admin.demo.example.com
 
 ## 6. 数据库初始化说明
 
-MySQL 官方镜像只会在数据卷为空时执行 `/docker-entrypoint-initdb.d`。因此：
+初始化**仅使用** `deploy/database/` 下从运行库导出的快照，不再执行历史 `migrate-*.sql`。
 
-- 首次 `docker compose up` 会自动建表。
-- 已经存在 `mysql-data` 卷时，不会重复执行 SQL。
-- 如果你要重新初始化演示环境，需要先确认数据可删除，再执行：
+| 模式 | 环境变量 | 导入文件 |
+|------|----------|----------|
+| 空表 | `DB_INIT_MODE=schema` | `campus_life/schema.sql` |
+| 含数据 | `DB_INIT_MODE=full` | `campus_life/full.sql` |
+
+AI 库同理：`AI_DB_INIT_MODE=schema|full`。
+
+MySQL 官方镜像只会在数据卷为空时执行 init。因此：
+
+- 首次 `docker compose up` 按 `.env` 中的 `DB_INIT_MODE` 导入。
+- 已有 `mysql-data` 卷时不会重复执行；切换版本需 `docker compose down -v`。
+- 表结构或数据变更后，在运行库上重新导出：
+
+```bash
+# Windows
+powershell -ExecutionPolicy Bypass -File deploy/database/scripts/export-from-running.ps1
+
+# Linux
+bash deploy/database/scripts/export-from-running.sh
+```
+
+- 重新初始化演示环境（**会删数据卷**）：
 
 ```bash
 docker compose down -v
@@ -183,6 +219,7 @@ docker compose up -d --build
 
 ```bash
 cd deploy/docker
+./scripts/check-database-dumps.sh
 docker compose up -d --build
 ```
 
@@ -212,7 +249,11 @@ docker compose restart backend ai gateway frontend
 
 ## 9. 常见问题
 
-- 前端能打开但接口 502：检查 `gateway`、`backend`、`ai` 容器日志。
+- `validate-env` 失败：替换 `.env` 中所有 `CHANGE_ME` 前缀的密码与 `JWT_SECRET`（≥32 字符）。
+- L2 内存不足 OOM：先只启 L1，或调大 `ES_JAVA_OPTS` / 机器规格。
+- L2 Kafka 启动慢：等待 `docker compose ps` 中 kafka、elasticsearch、milvus 均为 healthy 后再看 backend 日志。
+- 管理端操作日志 500：确认 `DB_INIT_MODE=full` 或表已导入；对旧卷执行 `./scripts/import-existing.sh full full`。
+- 前端能打开但接口 502：检查 `gateway`、`backend`、`ai` 容器日志与 `docker compose ps` 健康状态。
 - 登录后接口 401：确认三个 Java 服务使用同一个 `JWT_SECRET`。
 - 秒杀/优惠券失败：检查 `rabbitmq` 是否 healthy，`.env` 中 RabbitMQ 密码是否变更后重建了卷。
 - AI 对话失败：确认 `AI_OPENAI_COMPATIBLE_ENABLED=true` 且 API Key、Base URL、模型名正确。
