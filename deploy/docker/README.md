@@ -2,6 +2,8 @@
 
 独立于 `deploy/demo`（systemd 裸机）与 `deploy/middleware`（仅本地中间件）。在云服务器上用 Docker Compose 启动完整业务链路。
 
+实际云服务器部署中遇到的故障和处理记录见 [L1_DEPLOYMENT_TROUBLESHOOTING_CN.md](./L1_DEPLOYMENT_TROUBLESHOOTING_CN.md)。
+
 ## 部署档位
 
 | 档位 | 命令 | 包含服务 | 建议配置 |
@@ -116,6 +118,13 @@ AI_OPENAI_COMPATIBLE_API_KEY=你的 API Key
 AI_OPENAI_COMPATIBLE_MODEL=qwen-plus
 ```
 
+L2 启用 Milvus 向量检索时，还需要确保 embedding 可用；默认会复用 `AI_OPENAI_COMPATIBLE_API_KEY`，也可以单独配置：
+
+```text
+AI_KNOWLEDGE_EMBEDDING_API_KEY=你的 embedding API Key
+AI_KNOWLEDGE_EMBEDDING_MODEL=text-embedding-v4
+```
+
 ## 4. 一键构建并启动
 
 在 `deploy/docker` 目录执行：
@@ -129,7 +138,7 @@ docker compose up -d --build
 **L2 标准栈**（Kafka + ES + Milvus）：
 
 ```bash
-./scripts/validate-env.sh
+COMPOSE_PROFILES=full ./scripts/validate-env.sh
 COMPOSE_PROFILES=full docker compose -f docker-compose.yml -f docker-compose.full.yml up -d --build
 ```
 

@@ -1,5 +1,9 @@
 # L2 标准栈：配合 COMPOSE_PROFILES=full 与 --spring.profiles.active=docker,full
 spring:
+  data:
+    elasticsearch:
+      repositories:
+        enabled: true
   elasticsearch:
     uris: http://elasticsearch:9200
   kafka:
