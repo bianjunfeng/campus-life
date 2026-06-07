@@ -126,10 +126,8 @@ services:
     depends_on:
       kafka:
         condition: service_healthy
-        required: false
       elasticsearch:
         condition: service_healthy
-        required: false
 
   ai:
     command:
@@ -140,4 +138,3 @@ services:
     depends_on:
       milvus:
         condition: service_healthy
-        required: false

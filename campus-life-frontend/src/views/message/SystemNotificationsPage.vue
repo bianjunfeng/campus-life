@@ -62,7 +62,7 @@
 <script setup lang="ts">
 import { onMounted, ref } from 'vue'
 import { useRouter } from 'vue-router'
-import { getSystemNotifications, type NotificationItem } from '@/api/message'
+import { getSystemNotifications, markNotificationsAsRead, type NotificationItem } from '@/api/message'
 
 interface SystemMessage {
   id: string
@@ -75,7 +75,6 @@ interface SystemMessage {
 
 const router = useRouter()
 const messages = ref<SystemMessage[]>([])
-const LAST_SEEN_KEY = 'lastSeenSystemNotificationsAt'
 
 const handleBack = () => {
   const backPath = window.history.state?.back
@@ -84,15 +83,6 @@ const handleBack = () => {
     return
   }
   router.push('/message')
-}
-
-const resolveUnreadState = (createTime: string, unread?: boolean, seenAt?: string) => {
-  if (unread === false) return false
-  const seenTime = seenAt ? new Date(seenAt).getTime() : Number.NaN
-  if (Number.isNaN(seenTime)) return true
-  const itemTime = new Date(createTime).getTime()
-  if (Number.isNaN(itemTime)) return true
-  return itemTime > seenTime
 }
 
 const formatTime = (dateString: string): string => {
@@ -151,19 +141,27 @@ const handleMessageClick = (message: SystemMessage) => {
 const loadNotifications = async () => {
   try {
     const data = await getSystemNotifications()
-    const seenAt = new Date().toISOString()
-    sessionStorage.setItem(LAST_SEEN_KEY, seenAt)
     messages.value = data.map((item: NotificationItem) => ({
       id: item.id,
       type: item.type,
       message: item.message || '系统状态已更新',
       time: item.createTime,
-      unread: resolveUnreadState(item.createTime, item.unread, seenAt),
+      unread: item.unread !== false,
       levelClass: levelClassFor(item.type)
     }))
   } catch (error) {
     console.error('加载系统通知失败:', error)
     messages.value = []
+    return
+  }
+
+  try {
+    await markNotificationsAsRead('system')
+    messages.value.forEach(message => {
+      message.unread = false
+    })
+  } catch (error) {
+    console.error('标记系统通知已读失败:', error)
   }
 }
 

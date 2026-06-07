@@ -60,7 +60,7 @@
 <script setup lang="ts">
 import { onMounted, ref } from 'vue'
 import { useRouter } from 'vue-router'
-import { getFollowNotifications } from '@/api/message'
+import { getFollowNotifications, markNotificationsAsRead } from '@/api/message'
 
 interface Message {
   id: string
@@ -75,7 +75,6 @@ interface Message {
 const router = useRouter()
 
 const messages = ref<Message[]>([])
-const LAST_SEEN_KEY = 'lastSeenFollowsNotificationsAt'
 
 const handleBack = () => {
   const backPath = window.history.state?.back
@@ -84,15 +83,6 @@ const handleBack = () => {
     return
   }
   router.push('/message')
-}
-
-const resolveUnreadState = (createTime: string, unread?: boolean, seenAt?: string) => {
-  if (unread === false) return false
-  const seenTime = seenAt ? new Date(seenAt).getTime() : Number.NaN
-  if (Number.isNaN(seenTime)) return true
-  const itemTime = new Date(createTime).getTime()
-  if (Number.isNaN(itemTime)) return true
-  return itemTime > seenTime
 }
 
 // 格式化时间
@@ -134,20 +124,28 @@ const goToUser = (message: Message) => {
 const loadNotifications = async () => {
   try {
     const data = await getFollowNotifications()
-    const seenAt = new Date().toISOString()
-    sessionStorage.setItem(LAST_SEEN_KEY, seenAt)
     messages.value = data.map(item => ({
       id: item.id,
       name: item.actorUserName || '用户',
       avatarUrl: item.actorUserAvatar || 'https://via.placeholder.com/50x50?text=U',
       message: item.message || '关注了你',
       time: item.createTime,
-      unread: resolveUnreadState(item.createTime, item.unread, seenAt),
+      unread: item.unread !== false,
       userId: item.actorUserId
     }))
   } catch (error) {
     console.error('加载新增关注通知失败:', error)
     messages.value = []
+    return
+  }
+
+  try {
+    await markNotificationsAsRead('follows')
+    messages.value.forEach(message => {
+      message.unread = false
+    })
+  } catch (error) {
+    console.error('标记新增关注通知已读失败:', error)
   }
 }
 

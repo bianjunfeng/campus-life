@@ -38,6 +38,8 @@ export interface NotificationItem {
   unread?: boolean
 }
 
+export type NotificationCategory = 'likes-favorites' | 'comments' | 'follows' | 'system' | 'all'
+
 // 发送消息
 export const sendMessage = async (toUserId: number, content: string): Promise<Message> => {
   const response = await http.post('/message/send', {
@@ -110,6 +112,24 @@ export const getUnreadCount = async (): Promise<number> => {
     return data.data?.unreadCount || 0
   }
   throw new Error(data.message || '获取未读消息数量失败')
+}
+
+export const markNotificationsAsRead = async (category: NotificationCategory): Promise<number> => {
+  const response = await http.put('/message/notifications/read', { category })
+  const data = response.data
+  if (data.code === 200) {
+    return data.data?.updatedCount || 0
+  }
+  throw new Error(data.message || '标记通知已读失败')
+}
+
+export const markNotificationAsRead = async (notificationId: number | string): Promise<number> => {
+  const response = await http.put(`/message/notifications/${notificationId}/read`)
+  const data = response.data
+  if (data.code === 200) {
+    return data.data?.updatedCount || 0
+  }
+  throw new Error(data.message || '标记通知已读失败')
 }
 
 export const getLikeAndFavoriteNotifications = async (): Promise<NotificationItem[]> => {

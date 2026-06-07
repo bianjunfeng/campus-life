@@ -18,6 +18,9 @@ spring:
       port: 6379
       password: ${REDIS_PASSWORD:}
       timeout: 3000
+    elasticsearch:
+      repositories:
+        enabled: false
   rabbitmq:
     host: rabbitmq
     port: 5672
@@ -56,13 +59,33 @@ jwt:
   expiration: 604800000
   refresh-expiration: 2592000000
 
+auth:
+  verification-code:
+    secret: ${AUTH_VERIFICATION_CODE_SECRET:${JWT_SECRET:please-change-this-docker-secret}}
+  sms:
+    provider: ${AUTH_SMS_PROVIDER:}
+    http:
+      endpoint: ${AUTH_SMS_HTTP_ENDPOINT:}
+      api-key: ${AUTH_SMS_HTTP_API_KEY:}
+      api-key-header: ${AUTH_SMS_HTTP_API_KEY_HEADER:X-API-Key}
+      sign-name: ${AUTH_SMS_SIGN_NAME:}
+      template-code: ${AUTH_SMS_TEMPLATE_CODE:}
+      connect-timeout-ms: ${AUTH_SMS_HTTP_CONNECT_TIMEOUT_MS:3000}
+      read-timeout-ms: ${AUTH_SMS_HTTP_READ_TIMEOUT_MS:5000}
+
 file:
   storage:
-    type: local
+    type: ${FILE_STORAGE_TYPE:local}
   upload:
-    path: /app/data/uploads
+    path: data/uploads
     url-prefix: /uploads
     public-base-url: ${DEMO_PUBLIC_BASE_URL:http://localhost}
+  oss:
+    endpoint: ${OSS_ENDPOINT:oss-cn-beijing.aliyuncs.com}
+    access-key-id: ${OSS_ACCESS_KEY_ID:}
+    access-key-secret: ${OSS_ACCESS_KEY_SECRET:}
+    bucket-name: ${OSS_BUCKET_NAME:}
+    url-prefix: ${OSS_URL_PREFIX:}
 
 payment:
   frontend-base-url: ${DEMO_PUBLIC_BASE_URL:http://localhost}

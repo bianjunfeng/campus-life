@@ -108,6 +108,21 @@ services:
       ALIPAY_NOTIFY_URL: ${ALIPAY_NOTIFY_URL:-http://localhost/api/payment/alipay/notify}
       ALIPAY_RETURN_URL: ${ALIPAY_RETURN_URL:-http://localhost/api/payment/alipay/return}
       WECHAT_ENABLED: ${WECHAT_ENABLED:-false}
+      AUTH_VERIFICATION_CODE_SECRET: ${AUTH_VERIFICATION_CODE_SECRET:-}
+      AUTH_SMS_PROVIDER: ${AUTH_SMS_PROVIDER:-}
+      AUTH_SMS_HTTP_ENDPOINT: ${AUTH_SMS_HTTP_ENDPOINT:-}
+      AUTH_SMS_HTTP_API_KEY: ${AUTH_SMS_HTTP_API_KEY:-}
+      AUTH_SMS_HTTP_API_KEY_HEADER: ${AUTH_SMS_HTTP_API_KEY_HEADER:-X-API-Key}
+      AUTH_SMS_SIGN_NAME: ${AUTH_SMS_SIGN_NAME:-}
+      AUTH_SMS_TEMPLATE_CODE: ${AUTH_SMS_TEMPLATE_CODE:-}
+      AUTH_SMS_HTTP_CONNECT_TIMEOUT_MS: ${AUTH_SMS_HTTP_CONNECT_TIMEOUT_MS:-3000}
+      AUTH_SMS_HTTP_READ_TIMEOUT_MS: ${AUTH_SMS_HTTP_READ_TIMEOUT_MS:-5000}
+      FILE_STORAGE_TYPE: ${FILE_STORAGE_TYPE:-local}
+      OSS_ENDPOINT: ${OSS_ENDPOINT:-}
+      OSS_ACCESS_KEY_ID: ${OSS_ACCESS_KEY_ID:-}
+      OSS_ACCESS_KEY_SECRET: ${OSS_ACCESS_KEY_SECRET:-}
+      OSS_BUCKET_NAME: ${OSS_BUCKET_NAME:-}
+      OSS_URL_PREFIX: ${OSS_URL_PREFIX:-}
     command:
       - --spring.profiles.active=docker
       - --spring.config.additional-location=file:/app/config/
@@ -155,6 +170,7 @@ services:
       AI_DEFAULT_MODEL_CODE: ${AI_DEFAULT_MODEL_CODE:-qwen-plus}
       AI_KNOWLEDGE_VECTOR_ENABLED: ${AI_KNOWLEDGE_VECTOR_ENABLED:-false}
       AI_KNOWLEDGE_VECTOR_FALLBACK_KEYWORD_SEARCH: ${AI_KNOWLEDGE_VECTOR_FALLBACK_KEYWORD_SEARCH:-true}
+      REDIS_PASSWORD: ${REDIS_PASSWORD:-CHANGE_ME_redis_password}
     command:
       - --spring.profiles.active=docker
       - --spring.config.additional-location=file:/app/config/
@@ -163,6 +179,8 @@ services:
       - ai-knowledge-data:/app/data/ai-knowledge
     depends_on:
       mysql:
+        condition: service_healthy
+      redis:
         condition: service_healthy
     healthcheck:
       test: ["CMD-SHELL", "curl -fsS http://127.0.0.1:8083/actuator/health | grep -q '\"status\":\"UP\"'"]

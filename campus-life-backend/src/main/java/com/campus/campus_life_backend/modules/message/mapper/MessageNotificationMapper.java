@@ -16,6 +16,10 @@ public interface MessageNotificationMapper {
 
     List<NotificationItemDTO> findSystemNotifications(@Param("userId") Long userId);
 
+    int markNotificationsAsRead(@Param("userId") Long userId, @Param("category") String category);
+
+    int markNotificationAsRead(@Param("userId") Long userId, @Param("notificationId") Long notificationId);
+
     int insertSystemNotification(
             @Param("eventId") String eventId,
             @Param("type") String type,

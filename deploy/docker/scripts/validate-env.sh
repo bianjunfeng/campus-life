@@ -64,4 +64,19 @@ if [ "${AI_OPENAI_COMPATIBLE_ENABLED:-false}" = "true" ] && [ -z "${AI_OPENAI_CO
   warn "AI_OPENAI_COMPATIBLE_ENABLED=true but AI_OPENAI_COMPATIBLE_API_KEY is empty"
 fi
 
+is_full_profile=false
+if [[ ",${COMPOSE_PROFILES:-}," == *",full,"* ]]; then
+  is_full_profile=true
+fi
+if [ "${AI_KNOWLEDGE_VECTOR_ENABLED:-false}" = "true" ]; then
+  is_full_profile=true
+fi
+
+if [ "$is_full_profile" = "true" ]; then
+  embedding_key="${AI_KNOWLEDGE_EMBEDDING_API_KEY:-${AI_OPENAI_COMPATIBLE_API_KEY:-}}"
+  if [ -z "$embedding_key" ]; then
+    fail "L2 vector search requires AI_KNOWLEDGE_EMBEDDING_API_KEY or AI_OPENAI_COMPATIBLE_API_KEY"
+  fi
+fi
+
 echo "[validate-env] OK"

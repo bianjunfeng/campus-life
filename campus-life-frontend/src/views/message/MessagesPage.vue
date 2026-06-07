@@ -153,7 +153,9 @@ import {
   getLikeAndFavoriteNotifications,
   getSystemNotifications,
   markConversationAsRead,
+  markNotificationsAsRead,
   type Conversation,
+  type NotificationCategory,
   type NotificationItem
 } from '@/api/message'
 import { showConfirm } from '@/utils/dialog'
@@ -195,10 +197,6 @@ const unreadLikesCountRef = ref(0)
 const unreadFollowsCountRef = ref(0)
 const unreadCommentsCountRef = ref(0)
 const unreadSystemCountRef = ref(0)
-const LAST_SEEN_LIKES_KEY = 'lastSeenLikesNotificationsAt'
-const LAST_SEEN_FOLLOWS_KEY = 'lastSeenFollowsNotificationsAt'
-const LAST_SEEN_COMMENTS_KEY = 'lastSeenCommentsNotificationsAt'
-const LAST_SEEN_SYSTEM_KEY = 'lastSeenSystemNotificationsAt'
 
 // 格式化时间
 const formatTime = (dateString: string): string => {
@@ -395,61 +393,48 @@ const loadTopNotificationCounts = async () => {
       getCommentNotifications(),
       getSystemNotifications()
     ])
-    unreadLikesCountRef.value = countUnreadNotifications(likes, LAST_SEEN_LIKES_KEY)
-    unreadFollowsCountRef.value = countUnreadNotifications(follows, LAST_SEEN_FOLLOWS_KEY)
-    unreadCommentsCountRef.value = countUnreadNotifications(comments, LAST_SEEN_COMMENTS_KEY)
-    unreadSystemCountRef.value = countUnreadNotifications(systemList, LAST_SEEN_SYSTEM_KEY)
+    unreadLikesCountRef.value = countUnreadNotifications(likes)
+    unreadFollowsCountRef.value = countUnreadNotifications(follows)
+    unreadCommentsCountRef.value = countUnreadNotifications(comments)
+    unreadSystemCountRef.value = countUnreadNotifications(systemList)
   } catch (error) {
     console.error('加载顶部互动通知数量失败:', error)
   }
 }
 
-const countUnreadNotifications = (
-  items: Array<{ createTime: string; unread?: boolean }>,
-  storageKey: string
-): number => {
-  const lastSeenRaw = sessionStorage.getItem(storageKey)
-  const lastSeenTime = lastSeenRaw ? new Date(lastSeenRaw).getTime() : Number.NaN
-  return items.filter(item => {
-    if (item.unread === false) {
-      return false
-    }
-    if (Number.isNaN(lastSeenTime)) {
-      return true
-    }
-    const itemTime = new Date(item.createTime).getTime()
-    if (Number.isNaN(itemTime)) {
-      return true
-    }
-    return itemTime > lastSeenTime
-  }).length
+const countUnreadNotifications = (items: Array<{ unread?: boolean }>): number => {
+  return items.filter(item => item.unread !== false).length
 }
 
-const markSeen = (storageKey: string) => {
-  sessionStorage.setItem(storageKey, new Date().toISOString())
+const markNotificationCategoryAsRead = async (category: NotificationCategory) => {
+  try {
+    await markNotificationsAsRead(category)
+  } catch (error) {
+    console.error('标记通知已读失败:', error)
+  }
 }
 
 const openLikesPage = () => {
-  markSeen(LAST_SEEN_LIKES_KEY)
   unreadLikesCountRef.value = 0
+  void markNotificationCategoryAsRead('likes-favorites')
   router.push('/message/likes')
 }
 
 const openFollowsPage = () => {
-  markSeen(LAST_SEEN_FOLLOWS_KEY)
   unreadFollowsCountRef.value = 0
+  void markNotificationCategoryAsRead('follows')
   router.push('/message/follows')
 }
 
 const openCommentsPage = () => {
-  markSeen(LAST_SEEN_COMMENTS_KEY)
   unreadCommentsCountRef.value = 0
+  void markNotificationCategoryAsRead('comments')
   router.push('/message/comments')
 }
 
 const openSystemPage = () => {
-  markSeen(LAST_SEEN_SYSTEM_KEY)
   unreadSystemCountRef.value = 0
+  void markNotificationCategoryAsRead('system')
   router.push('/message/system')
 }
 
@@ -512,14 +497,26 @@ const handleAddClick = () => {
 // 全部标记为已读
 const markAllAsRead = async () => {
   const unreadConversations = messages.value.filter(msg => msg.unread && msg.conversationId)
-  if (unreadConversations.length === 0) return
+  const hasUnreadNotifications = [
+    unreadLikesCountRef.value,
+    unreadFollowsCountRef.value,
+    unreadCommentsCountRef.value,
+    unreadSystemCountRef.value
+  ].some(count => count > 0)
+  if (unreadConversations.length === 0 && !hasUnreadNotifications) return
 
-  const results = await Promise.allSettled(
-    unreadConversations.map(msg => markConversationAsRead(msg.conversationId as string))
-  )
+  const [conversationResults, notificationResult] = await Promise.all([
+    Promise.allSettled(
+      unreadConversations.map(msg => markConversationAsRead(msg.conversationId as string))
+    ),
+    markNotificationsAsRead('all').then(() => true).catch((error) => {
+      console.error('标记通知已读失败:', error)
+      return false
+    })
+  ])
 
   const succeededConversationIds = new Set(
-    results.flatMap((result, index) => (
+    conversationResults.flatMap((result, index) => (
       result.status === 'fulfilled' ? [unreadConversations[index].conversationId as string] : []
     ))
   )
@@ -531,8 +528,15 @@ const markAllAsRead = async () => {
     }
   })
 
-  if (succeededConversationIds.size !== unreadConversations.length) {
-    notify('部分会话标记已读失败，已保留未同步状态')
+  if (notificationResult) {
+    unreadLikesCountRef.value = 0
+    unreadFollowsCountRef.value = 0
+    unreadCommentsCountRef.value = 0
+    unreadSystemCountRef.value = 0
+  }
+
+  if (succeededConversationIds.size !== unreadConversations.length || !notificationResult) {
+    notify('部分消息或通知标记已读失败，已保留未同步状态')
   }
 
   await loadConversations()

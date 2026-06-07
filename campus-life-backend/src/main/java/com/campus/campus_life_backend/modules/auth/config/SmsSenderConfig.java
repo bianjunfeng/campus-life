@@ -31,6 +31,9 @@ public class SmsSenderConfig {
                                @Value("${auth.sms.http.connect-timeout-ms:3000}") long connectTimeoutMs,
                                @Value("${auth.sms.http.read-timeout-ms:5000}") long readTimeoutMs) {
         String normalizedProvider = provider == null ? "" : provider.trim().toLowerCase();
+        if ("dev-log".equals(normalizedProvider)) {
+            return new DevLoggingSmsSender();
+        }
         if (isNonProduction(environment) && (normalizedProvider.isBlank() || "dev-log".equals(normalizedProvider))) {
             return new DevLoggingSmsSender();
         }

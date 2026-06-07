@@ -7,6 +7,7 @@ import org.springframework.web.servlet.config.annotation.CorsRegistry;
 import org.springframework.web.servlet.config.annotation.ResourceHandlerRegistry;
 import org.springframework.web.servlet.config.annotation.WebMvcConfigurer;
 
+import java.nio.file.Path;
 import java.util.Arrays;
 
 @Configuration
@@ -41,9 +42,13 @@ public class CorsConfig {
             @Override
             public void addResourceHandlers(ResourceHandlerRegistry registry) {
                 // 配置静态资源访问路径，将 /uploads/** 映射到本地文件系统
-                String path = "file:" + System.getProperty("user.dir") + "/" + uploadPath + "/";
+                Path configuredPath = Path.of(uploadPath);
+                Path resolvedPath = configuredPath.isAbsolute()
+                        ? configuredPath
+                        : Path.of(System.getProperty("user.dir")).resolve(configuredPath);
+                String path = resolvedPath.toAbsolutePath().normalize().toUri().toString();
                 registry.addResourceHandler(urlPrefix + "/**")
-                        .addResourceLocations(path);
+                        .addResourceLocations(path.endsWith("/") ? path : path + "/");
             }
         };
     }

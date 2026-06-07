@@ -1,8 +1,9 @@
 <template>
   <div class="login-container">
   <div class="login-header">
-        <h1>校园生活平台</h1>
-    <p>发现美好世界  聚焦青春校园</p>
+    <span class="portal-badge">{{ portalTitle }}</span>
+    <h1>校园生活平台</h1>
+    <p>{{ portalSubtitle }}</p>
     <div class="demo-account" aria-label="演示账号">
       <div class="demo-account-title">演示账号（密码：{{ demoPassword }}）</div>
       <div class="demo-account-list">
@@ -94,7 +95,7 @@
           <a href="#" class="forgot-password">忘记密码?</a>
         </div>
         <button type="button" @click="handlePasswordLogin" class="login-btn" :disabled="loginLoading">
-          {{ loginLoading ? '正在登录...' : '登录' }}
+          {{ loginLoading ? '正在登录...' : portalLoginText }}
         </button>
       </div>
       
@@ -130,7 +131,7 @@
           <span v-if="errors.code" class="error-text">{{ errors.code }}</span>
         </div>
         <button type="button" @click="handleCodeLogin" class="login-btn" :disabled="loginLoading">
-          {{ loginLoading ? '正在登录...' : '登录' }}
+          {{ loginLoading ? '正在登录...' : portalLoginText }}
         </button>
       </div>
       
@@ -166,7 +167,7 @@
 </template>
 
 <script setup lang="ts">
-import { nextTick, ref, onMounted } from 'vue'
+import { computed, nextTick, ref, onMounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { loginApi, type LoginPayload, getWechatAuthUrl, getQQAuthUrl } from '../../api/auth'
 import { sendVerificationCode } from '../../api/auth'
@@ -278,6 +279,33 @@ const getPortalRoleRequirement = () => {
   }
   return { role: '', label: '', defaultPath: '/home', allowedPrefix: '' }
 }
+
+const portalDisplay = computed(() => {
+  const requirement = getPortalRoleRequirement()
+  if (requirement.role === 'ADMIN') {
+    return {
+      title: '管理端',
+      subtitle: '平台运营与系统管理工作台',
+      loginText: '登录管理端'
+    }
+  }
+  if (requirement.role === 'MERCHANT') {
+    return {
+      title: '商家端',
+      subtitle: '管理优惠券、订单与店铺服务',
+      loginText: '登录商家端'
+    }
+  }
+  return {
+    title: '学生端',
+    subtitle: '发现美好世界  聚焦青春校园',
+    loginText: '登录学生端'
+  }
+})
+
+const portalTitle = computed(() => portalDisplay.value.title)
+const portalSubtitle = computed(() => portalDisplay.value.subtitle)
+const portalLoginText = computed(() => portalDisplay.value.loginText)
 
 const getLoginTargetPath = (userRole?: string) => {
   const requirement = getPortalRoleRequirement()
@@ -588,17 +616,47 @@ const handleQQLogin = async () => {
 
 <style scoped>
 .login-container {
+  position: fixed;
+  inset: 0;
   min-height: 100vh;
+  width: 100vw;
   display: flex;
   flex-direction: column;
-  background-color: #f5f5f5;
+  align-items: center;
+  justify-content: center;
+  overflow-y: auto;
+  padding: 32px 16px;
+  box-sizing: border-box;
+  background:
+    radial-gradient(circle at 20% 20%, rgba(22, 119, 255, 0.12), transparent 32%),
+    linear-gradient(135deg, #f7fbff 0%, #f4f7fb 52%, #eef4ff 100%);
 }
 
 .login-header {
+  width: min(520px, 100%);
+  box-sizing: border-box;
   text-align: center;
-  padding: 60px 20px 40px;
+  padding: 28px 28px 24px;
   background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
   color: white;
+  border-radius: 18px 18px 0 0;
+  box-shadow: 0 18px 48px rgba(15, 23, 42, 0.16);
+}
+
+.portal-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 28px;
+  padding: 0 12px;
+  margin-bottom: 14px;
+  border: 1px solid rgba(255, 255, 255, 0.3);
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.16);
+  color: #fff;
+  font-size: 13px;
+  font-weight: 700;
+  line-height: 1;
 }
 
 .demo-account {
@@ -658,23 +716,25 @@ const handleQQLogin = async () => {
 }
 
 .login-header h1 {
-  font-size: 36px;
-  margin: 0 0 10px;
+  font-size: 30px;
+  margin: 0 0 8px;
 }
 
 .login-header p {
-  font-size: 16px;
+  font-size: 15px;
   margin: 0;
   opacity: 0.9;
 }
 
 .login-content {
-  flex: 1;
+  width: min(520px, 100%);
+  box-sizing: border-box;
+  flex: none;
   background-color: white;
-  margin: -30px 20px 20px;
-  border-radius: 16px;
-  padding: 30px;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+  margin: 0;
+  border-radius: 0 0 18px 18px;
+  padding: 28px;
+  box-shadow: 0 18px 48px rgba(15, 23, 42, 0.16);
 }
 
 .login-tabs {
@@ -880,7 +940,7 @@ const handleQQLogin = async () => {
 
 /* 其他登录方式 */
 .other-login {
-  margin-top: 40px;
+  margin-top: 28px;
 }
 
 .divider {
@@ -903,7 +963,7 @@ const handleQQLogin = async () => {
   font-size: 14px;
 }
 
-.login-options {
+.other-login .login-options {
   display: flex;
   justify-content: center;
   gap: 40px;
@@ -972,8 +1032,17 @@ const handleQQLogin = async () => {
 
 /* 响应式设计 */
 @media (max-width: 480px) {
+  .login-container {
+    justify-content: flex-start;
+    padding: 16px 12px;
+  }
+
   .login-header {
-    padding: 40px 20px 30px;
+    padding: 22px 18px 20px;
+  }
+
+  .login-header h1 {
+    font-size: 24px;
   }
 
   .demo-account-list {
@@ -981,7 +1050,7 @@ const handleQQLogin = async () => {
   }
   
   .login-content {
-    margin: -25px 15px 20px;
+    margin: 0;
     padding: 20px;
   }
   
