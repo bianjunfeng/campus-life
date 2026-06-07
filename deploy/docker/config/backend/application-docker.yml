@@ -63,7 +63,7 @@ file:
   storage:
     type: local
   upload:
-    path: /app/data/uploads
+    path: data/uploads
     url-prefix: /uploads
     public-base-url: ${DEMO_PUBLIC_BASE_URL:http://localhost}
 
