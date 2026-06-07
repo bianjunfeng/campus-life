@@ -9,6 +9,7 @@ export function createAppConfig(appName, devPort) {
     const projectRoot = fileURLToPath(new URL('.', import.meta.url))
     const env = loadEnv(mode, projectRoot, '')
     const apiProxyTarget = env.VITE_API_PROXY_TARGET || 'http://localhost:8090'
+    const wsProxyTarget = apiProxyTarget.replace(/^http/i, 'ws')
     const appIndexPath = path.join(projectRoot, 'apps', appName, 'index.html')
     const publicBase = {
       'consumer-web': '/',
@@ -28,6 +29,7 @@ export function createAppConfig(appName, devPort) {
               const url = req.url || '/'
               const acceptsHtml = req.headers.accept?.includes('text/html')
               const isAssetRequest = url.startsWith('/api')
+                || url.startsWith('/ws')
                 || url.startsWith('/@')
                 || url.startsWith('/src/')
                 || url.startsWith('/apps/')
@@ -68,6 +70,11 @@ export function createAppConfig(appName, devPort) {
           '/api': {
             target: apiProxyTarget,
             changeOrigin: true
+          },
+          '/ws': {
+            target: wsProxyTarget,
+            changeOrigin: true,
+            ws: true
           }
         }
       },

@@ -58,6 +58,10 @@ spring:
                 redis-rate-limiter.replenishRate: ${gateway.rate-limit.replenish-rate:80}
                 redis-rate-limiter.burstCapacity: ${gateway.rate-limit.burst-capacity:160}
                 redis-rate-limiter.requestedTokens: ${gateway.rate-limit.requested-tokens:1}
+        - id: backend-ws
+          uri: ${gateway.backend-ws-uri:ws://localhost:8080}
+          predicates:
+            - Path=/ws/**
         - id: backend-uploads
           uri: ${gateway.backend-uri:http://localhost:8080}
           predicates:
@@ -76,6 +80,7 @@ management:
 
 gateway:
   backend-uri: ${GATEWAY_BACKEND_URI:http://localhost:8080}
+  backend-ws-uri: ${GATEWAY_BACKEND_WS_URI:ws://localhost:8080}
   voucher-uri: ${GATEWAY_VOUCHER_URI:http://localhost:8081}
   ai-uri: ${GATEWAY_AI_URI:http://localhost:8083}
   rate-limit:

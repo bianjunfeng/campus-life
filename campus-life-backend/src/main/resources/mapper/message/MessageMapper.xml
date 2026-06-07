@@ -36,6 +36,37 @@
         </if>
     </select>
 
+    <select id="findLatestByConversationId" resultMap="MessageResultMap">
+        SELECT * FROM (
+            SELECT * FROM message
+            WHERE conversation_id = #{conversationId} AND status != 2
+            ORDER BY id DESC
+            LIMIT #{limit}
+        ) latest_messages
+        ORDER BY id ASC
+    </select>
+
+    <select id="findAfterIdByConversationId" resultMap="MessageResultMap">
+        SELECT * FROM message
+        WHERE conversation_id = #{conversationId}
+          AND status != 2
+          AND id &gt; #{afterId}
+        ORDER BY id ASC
+        LIMIT #{limit}
+    </select>
+
+    <select id="findBeforeIdByConversationId" resultMap="MessageResultMap">
+        SELECT * FROM (
+            SELECT * FROM message
+            WHERE conversation_id = #{conversationId}
+              AND status != 2
+              AND id &lt; #{beforeId}
+            ORDER BY id DESC
+            LIMIT #{limit}
+        ) older_messages
+        ORDER BY id ASC
+    </select>
+
     <!-- 获取用户的所有会话列表（每个会话返回最新一条消息） -->
     <select id="findConversationsByUserId" resultMap="MessageResultMap">
         SELECT m.* FROM message m

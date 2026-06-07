@@ -83,7 +83,8 @@ public class SecurityConfig {
                     "/actuator/health",
                     "/actuator/prometheus",
                     "/api/auth/**",
-                    "/api/perf/**"
+                    "/api/perf/**",
+                    "/ws/**"
                 ).permitAll()
                 .requestMatchers(HttpMethod.POST, "/api/payment/alipay/notify", "/api/payment/wechat/notify").permitAll()
                 .requestMatchers(HttpMethod.GET, "/api/payment/alipay/return").permitAll()

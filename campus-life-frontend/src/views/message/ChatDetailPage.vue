@@ -121,7 +121,8 @@
 <script setup lang="ts">
 import { ref, onMounted, watch, onUnmounted } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
-import { sendMessage as sendMessageApi, getMessagesByUserId, markConversationAsRead, type Message } from '@/api/message'
+import { sendMessage as sendMessageApi, syncMessagesByUserId, markConversationAsRead, type Message } from '@/api/message'
+import { messageSocket } from '@/api/messageSocket'
 import { getStoredUserInfoObject } from '@/utils/authStorage'
 import { notify } from '@/utils/notify'
 
@@ -154,8 +155,9 @@ const loading = ref(false)
 const conversationId = ref<string>('')
 const currentUserId = ref<number>(0)
 const otherUserId = ref<number>(0)
-let pollInterval: number | null = null
 let handleDocumentClick: ((event: MouseEvent) => void) | null = null
+let unsubscribeMessage: (() => void) | null = null
+let unsubscribeReconnect: (() => void) | null = null
 
 // 对方用户信息
 const currentUser = ref<User>({
@@ -219,6 +221,82 @@ const formatTime = (date?: Date | string): string => {
   return `${hours}:${minutes}`
 }
 
+const resolveSelfUser = () => {
+  const userInfo = getStoredUserInfoObject<any>()
+  if (userInfo) {
+    currentUserId.value = Number(userInfo.id || userInfo.userId || 0)
+    selfUser.value = {
+      id: currentUserId.value,
+      name: userInfo.username || userInfo.nickName || userInfo.name || '我',
+      avatarUrl: userInfo.avatarUrl || userInfo.icon || '',
+      isOnline: true
+    }
+  }
+}
+
+const isCurrentConversationMessage = (message: Message) => {
+  if (conversationId.value && message.conversationId === conversationId.value) {
+    return true
+  }
+  return (
+    (message.fromUserId === currentUserId.value && message.toUserId === otherUserId.value) ||
+    (message.fromUserId === otherUserId.value && message.toUserId === currentUserId.value)
+  )
+}
+
+const appendMessage = (message: Message) => {
+  if (!message?.id || chatMessages.value.some(item => item.id === message.id)) {
+    return false
+  }
+  if (!conversationId.value) {
+    conversationId.value = message.conversationId
+  }
+  chatMessages.value.push({
+    id: message.id,
+    text: message.content,
+    time: formatTime(message.createTime),
+    sent: message.fromUserId === currentUserId.value,
+    createTime: message.createTime
+  })
+  return true
+}
+
+const syncMissingMessages = async () => {
+  if (!otherUserId.value) return
+  const latestId = chatMessages.value.reduce((max, message) => Math.max(max, message.id || 0), 0)
+  if (!latestId) {
+    await loadMessages()
+    return
+  }
+  try {
+    const result = await syncMessagesByUserId(otherUserId.value, { afterId: latestId, limit: 200 })
+    if (result.conversationId) {
+      conversationId.value = result.conversationId
+    }
+    let appended = false
+    result.messages.forEach((message: Message) => {
+      if (appendMessage(message)) {
+        appended = true
+      }
+    })
+    if (appended) {
+      await markCurrentConversationAsRead()
+      scrollToBottom()
+    }
+  } catch (error) {
+    console.error('同步断线消息失败:', error)
+  }
+}
+
+const markCurrentConversationAsRead = async () => {
+  if (!conversationId.value) return
+  try {
+    await markConversationAsRead(conversationId.value)
+  } catch (e) {
+    console.error('标记已读失败:', e)
+  }
+}
+
 // 发送消息
 const sendMessage = async () => {
   if (!newMessage.value.trim() || loading.value) return
@@ -228,17 +306,14 @@ const sendMessage = async () => {
   loading.value = true
   
   try {
-    const message = await sendMessageApi(otherUserId.value, content)
-    
-    // 添加到消息列表
-    const chatMsg: ChatMessage = {
-      id: message.id,
-      text: message.content,
-      time: formatTime(message.createTime),
-      sent: true,
-      createTime: message.createTime
+    let message: Message
+    if (messageSocket.isReady()) {
+      message = await messageSocket.sendChatMessage(otherUserId.value, content)
+    } else {
+      message = await sendMessageApi(otherUserId.value, content)
     }
-    chatMessages.value.push(chatMsg)
+    
+    appendMessage(message)
     
     // 更新会话ID
     if (!conversationId.value) {
@@ -305,21 +380,10 @@ const loadMessages = async () => {
   
   try {
     loading.value = true
-    const result = await getMessagesByUserId(otherUserId.value, 1, 100)
+    resolveSelfUser()
+    const result = await syncMessagesByUserId(otherUserId.value, { limit: 100 })
     
     conversationId.value = result.conversationId
-    
-    // 获取当前用户ID
-    const userInfo = getStoredUserInfoObject<any>()
-    if (userInfo) {
-      currentUserId.value = userInfo.id || userInfo.userId || 0
-      selfUser.value = {
-        id: currentUserId.value,
-        name: userInfo.username || userInfo.nickName || userInfo.name || '我',
-        avatarUrl: userInfo.avatarUrl || userInfo.icon || '',
-        isOnline: true
-      }
-    }
     
     // 转换消息格式
     chatMessages.value = result.messages.map((msg: Message) => ({
@@ -345,13 +409,7 @@ const loadMessages = async () => {
     }
     
     // 标记为已读
-    if (conversationId.value) {
-      try {
-        await markConversationAsRead(conversationId.value)
-      } catch (e) {
-        console.error('标记已读失败:', e)
-      }
-    }
+    await markCurrentConversationAsRead()
     
     // 滚动到底部
     scrollToBottom()
@@ -360,61 +418,6 @@ const loadMessages = async () => {
     chatMessages.value = []
   } finally {
     loading.value = false
-  }
-}
-
-// 轮询新消息
-const startPolling = () => {
-  if (pollInterval) return
-  
-  pollInterval = window.setInterval(async () => {
-    if (!conversationId.value || !otherUserId.value) return
-    
-    try {
-      const result = await getMessagesByUserId(otherUserId.value, 1, 100)
-      const newMessages = result.messages.filter((msg: Message) => {
-        return !chatMessages.value.some(cm => cm.id === msg.id)
-      })
-      
-      if (newMessages.length > 0) {
-        let currentUserId = 0
-        const userInfo = getStoredUserInfoObject<any>()
-        if (userInfo) {
-          currentUserId = userInfo.id || userInfo.userId || 0
-        }
-        
-        newMessages.forEach((msg: Message) => {
-          chatMessages.value.push({
-            id: msg.id,
-            text: msg.content,
-            time: formatTime(msg.createTime),
-            sent: msg.fromUserId === currentUserId,
-            createTime: msg.createTime
-          })
-        })
-        
-        // 标记为已读
-        if (conversationId.value) {
-          try {
-            await markConversationAsRead(conversationId.value)
-          } catch (e) {
-            console.error('标记已读失败:', e)
-          }
-        }
-        
-        scrollToBottom()
-      }
-    } catch (error) {
-      console.error('轮询消息失败:', error)
-    }
-  }, 3000)  // 每3秒轮询一次
-}
-
-// 停止轮询
-const stopPolling = () => {
-  if (pollInterval) {
-    clearInterval(pollInterval)
-    pollInterval = null
   }
 }
 
@@ -442,14 +445,12 @@ watch(() => route.params, async (newParams) => {
   otherUserId.value = parseInt(userId)
   
   if (otherUserId.value) {
-    // 停止之前的轮询
-    stopPolling()
-    
     // 加载消息（消息中包含用户信息）
     await loadMessages()
-    
-    // 开始轮询新消息
-    startPolling()
+
+    messageSocket.connect().catch(error => {
+      console.warn('消息WebSocket连接失败:', error)
+    })
   }
 }, { immediate: true })
 
@@ -467,11 +468,30 @@ onMounted(() => {
   }
   
   document.addEventListener('click', handleDocumentClick)
+
+  unsubscribeMessage = messageSocket.onChatMessage(async (message: Message) => {
+    if (!isCurrentConversationMessage(message)) return
+    if (appendMessage(message)) {
+      await markCurrentConversationAsRead()
+      scrollToBottom()
+    }
+  })
+
+  unsubscribeReconnect = messageSocket.onReconnect(() => {
+    syncMissingMessages()
+  })
 })
 
 // 组件卸载
 onUnmounted(() => {
-  stopPolling()
+  if (unsubscribeMessage) {
+    unsubscribeMessage()
+    unsubscribeMessage = null
+  }
+  if (unsubscribeReconnect) {
+    unsubscribeReconnect()
+    unsubscribeReconnect = null
+  }
   if (handleDocumentClick) {
     document.removeEventListener('click', handleDocumentClick)
     handleDocumentClick = null
