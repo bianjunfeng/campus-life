@@ -4,6 +4,7 @@ import com.campus.campus_life_backend.common.exception.BusinessErrorCode;
 import com.campus.campus_life_backend.common.exception.BusinessException;
 import com.campus.campus_life_backend.common.result.ApiResponse;
 import com.campus.campus_life_backend.common.security.annotation.RequirePermission;
+import com.campus.campus_life_backend.common.security.support.CurrentUserAccessor;
 import com.campus.campus_life_backend.modules.file.service.FileStorageService;
 import com.campus.campus_life_backend.modules.file.util.FileValidationUtil;
 import org.slf4j.Logger;
@@ -25,9 +26,11 @@ public class FileUploadController {
     private static final Logger logger = LoggerFactory.getLogger(FileUploadController.class);
 
     private final FileStorageService fileStorageService;
+    private final CurrentUserAccessor currentUserAccessor;
 
-    public FileUploadController(FileStorageService fileStorageService) {
+    public FileUploadController(FileStorageService fileStorageService, CurrentUserAccessor currentUserAccessor) {
         this.fileStorageService = fileStorageService;
+        this.currentUserAccessor = currentUserAccessor;
     }
 
     @PostMapping("/avatar")
@@ -40,7 +43,7 @@ public class FileUploadController {
         }
 
         try {
-            String fileUrl = fileStorageService.uploadFile(file, "avatars");
+            String fileUrl = fileStorageService.uploadFile(file, userScopedFolder("avatars"));
             String originalFilename = file.getOriginalFilename();
             String fileName = originalFilename != null ? originalFilename : "avatar";
             if (fileUrl.contains("/")) {
@@ -72,7 +75,7 @@ public class FileUploadController {
         }
 
         try {
-            String fileUrl = fileStorageService.uploadFile(file, "posts");
+            String fileUrl = fileStorageService.uploadFile(file, userScopedFolder("posts"));
             String originalFilename = file.getOriginalFilename();
             String fileName = originalFilename != null ? originalFilename : "post-image";
             if (fileUrl.contains("/")) {
@@ -104,7 +107,7 @@ public class FileUploadController {
         }
 
         try {
-            String fileUrl = fileStorageService.uploadFile(file, "certificates/student");
+            String fileUrl = fileStorageService.uploadFile(file, userScopedFolder("certificates/student"));
             String originalFilename = file.getOriginalFilename();
             String fileName = originalFilename != null ? originalFilename : "certificate";
             if (fileUrl.contains("/")) {
@@ -148,7 +151,7 @@ public class FileUploadController {
         }
 
         try {
-            String fileUrl = fileStorageService.uploadFile(file, "certificates/merchant");
+            String fileUrl = fileStorageService.uploadFile(file, userScopedFolder("certificates/merchant"));
             String fileName = originalFilename;
             if (fileUrl.contains("/")) {
                 fileName = fileUrl.substring(fileUrl.lastIndexOf("/") + 1);
@@ -167,6 +170,11 @@ public class FileUploadController {
             logger.error("文件上传失败: {}", e.getMessage(), e);
             throw new BusinessException(BusinessErrorCode.FILE_UPLOAD_FAILED, e);
         }
+    }
+
+    private String userScopedFolder(String folder) {
+        Long userId = currentUserAccessor.requireUserId();
+        return folder + "/user-" + userId;
     }
 
     private String getFileExtension(String filename) {

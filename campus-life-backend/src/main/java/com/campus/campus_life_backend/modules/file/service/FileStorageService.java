@@ -12,7 +12,7 @@ public interface FileStorageService {
     /**
      * 上传文件
      * @param file 文件对象
-     * @param folder 文件夹路径（如 "avatars"）
+     * @param folder 文件夹路径（如 "avatars/user-1"）
      * @return 文件访问URL
      */
     String uploadFile(MultipartFile file, String folder);
