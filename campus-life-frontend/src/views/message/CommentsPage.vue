@@ -57,7 +57,7 @@
 <script setup lang="ts">
 import { onMounted, ref } from 'vue'
 import { useRouter } from 'vue-router'
-import { getCommentNotifications } from '@/api/message'
+import { getCommentNotifications, markNotificationsAsRead } from '@/api/message'
 
 interface Message {
   id: string
@@ -74,7 +74,6 @@ interface Message {
 const router = useRouter()
 
 const messages = ref<Message[]>([])
-const LAST_SEEN_KEY = 'lastSeenCommentsNotificationsAt'
 
 const handleBack = () => {
   const backPath = window.history.state?.back
@@ -83,15 +82,6 @@ const handleBack = () => {
     return
   }
   router.push('/message')
-}
-
-const resolveUnreadState = (createTime: string, unread?: boolean, seenAt?: string) => {
-  if (unread === false) return false
-  const seenTime = seenAt ? new Date(seenAt).getTime() : Number.NaN
-  if (Number.isNaN(seenTime)) return true
-  const itemTime = new Date(createTime).getTime()
-  if (Number.isNaN(itemTime)) return true
-  return itemTime > seenTime
 }
 
 // 格式化时间
@@ -135,21 +125,29 @@ const goToUser = (message: Message) => {
 const loadNotifications = async () => {
   try {
     const data = await getCommentNotifications()
-    const seenAt = new Date().toISOString()
-    sessionStorage.setItem(LAST_SEEN_KEY, seenAt)
     messages.value = data.map(item => ({
       id: item.id,
       name: item.actorUserName || '用户',
       avatarUrl: item.actorUserAvatar || 'https://via.placeholder.com/50x50?text=U',
       message: item.message || '评论了你的帖子',
       time: item.createTime,
-      unread: resolveUnreadState(item.createTime, item.unread, seenAt),
+      unread: item.unread !== false,
       userId: item.actorUserId,
       postId: item.postId
     }))
   } catch (error) {
     console.error('加载评论和@通知失败:', error)
     messages.value = []
+    return
+  }
+
+  try {
+    await markNotificationsAsRead('comments')
+    messages.value.forEach(message => {
+      message.unread = false
+    })
+  } catch (error) {
+    console.error('标记评论和@通知已读失败:', error)
   }
 }
 

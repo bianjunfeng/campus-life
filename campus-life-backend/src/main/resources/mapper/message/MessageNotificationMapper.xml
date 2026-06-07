@@ -93,6 +93,40 @@
         LIMIT 100
     </select>
 
+    <update id="markNotificationsAsRead">
+        UPDATE system_notification
+        SET unread = 0, update_time = NOW()
+        WHERE target_user_id = #{userId}
+          AND unread = 1
+        <choose>
+            <when test="category == 'likes-favorites'">
+                AND type IN ('LIKE', 'FAVORITE', 'LIKE_COMMENT')
+            </when>
+            <when test="category == 'comments'">
+                AND type IN ('COMMENT', 'MENTION')
+            </when>
+            <when test="category == 'follows'">
+                AND type = 'FOLLOW'
+            </when>
+            <when test="category == 'system'">
+                AND type NOT IN ('LIKE', 'FAVORITE', 'LIKE_COMMENT', 'COMMENT', 'MENTION', 'FOLLOW')
+            </when>
+            <when test="category == 'all'">
+            </when>
+            <otherwise>
+                AND 1 = 0
+            </otherwise>
+        </choose>
+    </update>
+
+    <update id="markNotificationAsRead">
+        UPDATE system_notification
+        SET unread = 0, update_time = NOW()
+        WHERE id = #{notificationId}
+          AND target_user_id = #{userId}
+          AND unread = 1
+    </update>
+
     <insert id="insertSystemNotification">
         INSERT INTO system_notification (
             event_id, type, target_user_id, actor_user_id, post_id, comment_id, message, unread, create_time, update_time

@@ -6,6 +6,7 @@ import com.campus.campus_life_backend.common.result.ApiResponse;
 import com.campus.campus_life_backend.common.security.annotation.RequirePermission;
 import com.campus.campus_life_backend.common.security.support.CurrentUserAccessor;
 import com.campus.campus_life_backend.modules.message.dto.ConversationDTO;
+import com.campus.campus_life_backend.modules.message.dto.MarkNotificationsReadRequest;
 import com.campus.campus_life_backend.modules.message.dto.MessageDTO;
 import com.campus.campus_life_backend.modules.message.dto.NotificationItemDTO;
 import com.campus.campus_life_backend.modules.message.entity.Message;
@@ -152,6 +153,32 @@ public class MessageController {
         return ApiResponse.success(messageNotificationService.getSystemNotifications(userId));
     }
 
+    @PutMapping("/notifications/read")
+    public ApiResponse<Map<String, Object>> markNotificationsAsRead(@RequestBody(required = false) MarkNotificationsReadRequest request) {
+        Long userId = currentUserAccessor.requireUserId();
+        try {
+            int updatedCount = messageNotificationService.markNotificationsAsRead(userId, request == null ? null : request.getCategory());
+            Map<String, Object> result = new HashMap<>();
+            result.put("updatedCount", updatedCount);
+            return ApiResponse.success(result);
+        } catch (IllegalArgumentException e) {
+            throw new BusinessException(BusinessErrorCode.INVALID_PARAM, e.getMessage(), e);
+        }
+    }
+
+    @PutMapping("/notifications/{notificationId}/read")
+    public ApiResponse<Map<String, Object>> markNotificationAsRead(@PathVariable String notificationId) {
+        Long userId = currentUserAccessor.requireUserId();
+        try {
+            int updatedCount = messageNotificationService.markNotificationAsRead(userId, parseNotificationId(notificationId));
+            Map<String, Object> result = new HashMap<>();
+            result.put("updatedCount", updatedCount);
+            return ApiResponse.success(result);
+        } catch (IllegalArgumentException e) {
+            throw new BusinessException(BusinessErrorCode.INVALID_PARAM, e.getMessage(), e);
+        }
+    }
+
     private Long parseLong(Object value) {
         if (value == null) {
             return null;
@@ -161,5 +188,13 @@ public class MessageController {
         } catch (NumberFormatException e) {
             return null;
         }
+    }
+
+    private Long parseNotificationId(String value) {
+        if (value == null) {
+            return null;
+        }
+        String normalizedValue = value.startsWith("sys_") ? value.substring(4) : value;
+        return parseLong(normalizedValue);
     }
 }
