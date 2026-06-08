@@ -14,7 +14,9 @@ import com.campus.campus_life_backend.modules.auth.service.TokenService;
 import com.campus.campus_life_backend.modules.message.controller.MessageController;
 import com.campus.campus_life_backend.modules.message.dto.ConversationDTO;
 import com.campus.campus_life_backend.modules.message.service.MessageNotificationService;
+import com.campus.campus_life_backend.modules.message.service.MessageSendService;
 import com.campus.campus_life_backend.modules.message.service.MessageService;
+import com.campus.campus_life_backend.modules.message.websocket.MessageWebSocketTicketService;
 import com.campus.campus_life_backend.modules.search.controller.SearchController;
 import com.campus.campus_life_backend.modules.search.service.PostSearchService;
 import com.campus.campus_life_backend.modules.search.service.SearchOpsService;
@@ -81,7 +83,13 @@ class SecurityConfigTest {
     private MessageService messageService;
 
     @MockitoBean
+    private MessageSendService messageSendService;
+
+    @MockitoBean
     private MessageNotificationService messageNotificationService;
+
+    @MockitoBean
+    private MessageWebSocketTicketService messageWebSocketTicketService;
 
     @Test
     void shouldAllowPublicEndpointWithoutAuthentication() throws Exception {
@@ -121,4 +129,3 @@ class SecurityConfigTest {
                 .andExpect(jsonPath("$.data").isArray());
     }
 }
-

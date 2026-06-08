@@ -94,32 +94,51 @@ public class MessageService {
         int safePageSize = pageSize == null || pageSize < 1 ? 50 : Math.min(pageSize, 200);
         Integer offset = (safePage - 1) * safePageSize;
         List<Message> messages = messageMapper.findByConversationId(conversationId, offset, safePageSize);
-        Map<Long, User> usersById = loadUsersByIds(extractUserIds(messages));
+        return toMessageDTOs(messages);
+    }
 
-        return messages.stream().map(msg -> {
-            MessageDTO dto = new MessageDTO();
-            dto.setId(msg.getId());
-            dto.setConversationId(msg.getConversationId());
-            dto.setFromUserId(msg.getFromUserId());
-            dto.setToUserId(msg.getToUserId());
-            dto.setContent(msg.getContent());
-            dto.setStatus(msg.getStatus());
-            dto.setCreateTime(msg.getCreateTime());
+    public List<MessageDTO> syncMessagesByConversationId(String conversationId,
+                                                         Long currentUserId,
+                                                         Long beforeId,
+                                                         Long afterId,
+                                                         Integer limit) {
+        validateConversationAccess(conversationId, currentUserId);
+        return queryMessagesByCursor(conversationId, beforeId, afterId, limit);
+    }
 
-            User fromUser = usersById.get(msg.getFromUserId());
-            if (fromUser != null) {
-                dto.setFromUserName(fromUser.getUsername());
-                dto.setFromUserAvatar(fromUser.getAvatarUrl());
-            }
+    /**
+     * 通过对方用户ID同步会话消息，允许尚无消息的空会话。
+     */
+    public List<MessageDTO> syncMessagesByUserId(Long currentUserId,
+                                                 Long otherUserId,
+                                                 Long beforeId,
+                                                 Long afterId,
+                                                 Integer limit) {
+        if (currentUserId == null || otherUserId == null) {
+            throw new IllegalArgumentException("用户ID不能为空");
+        }
+        if (currentUserId.equals(otherUserId)) {
+            throw new IllegalArgumentException("不能与自己会话");
+        }
 
-            User toUser = usersById.get(msg.getToUserId());
-            if (toUser != null) {
-                dto.setToUserName(toUser.getUsername());
-                dto.setToUserAvatar(toUser.getAvatarUrl());
-            }
+        User otherUser = userMapper.findById(otherUserId);
+        if (otherUser == null || otherUser.getStatus() == null || otherUser.getStatus() != 1) {
+            throw new IllegalArgumentException("目标用户不存在或不可用");
+        }
 
-            return dto;
-        }).collect(Collectors.toList());
+        String existingConversationId = messageMapper.findConversationId(currentUserId, otherUserId);
+        if (existingConversationId == null || existingConversationId.isEmpty()) {
+            return new ArrayList<>();
+        }
+        return queryMessagesByCursor(existingConversationId, beforeId, afterId, limit);
+    }
+
+    public MessageDTO toMessageDTO(Message msg) {
+        if (msg == null) {
+            return null;
+        }
+        Map<Long, User> usersById = loadUsersByIds(extractUserIds(List.of(msg)));
+        return toMessageDTO(msg, usersById);
     }
 
     /**
@@ -180,6 +199,58 @@ public class MessageService {
         return latestByConversation.values().stream()
                 .sorted(this::compareMessageDesc)
                 .collect(Collectors.toList());
+    }
+
+    private List<MessageDTO> queryMessagesByCursor(String conversationId, Long beforeId, Long afterId, Integer limit) {
+        if (beforeId != null && afterId != null) {
+            throw new IllegalArgumentException("beforeId和afterId不能同时传入");
+        }
+
+        int safeLimit = limit == null || limit < 1 ? 100 : Math.min(limit, 200);
+        List<Message> messages;
+        if (afterId != null) {
+            messages = messageMapper.findAfterIdByConversationId(conversationId, afterId, safeLimit);
+        } else if (beforeId != null) {
+            messages = messageMapper.findBeforeIdByConversationId(conversationId, beforeId, safeLimit);
+        } else {
+            messages = messageMapper.findLatestByConversationId(conversationId, safeLimit);
+        }
+        return toMessageDTOs(messages);
+    }
+
+    private List<MessageDTO> toMessageDTOs(List<Message> messages) {
+        if (messages == null || messages.isEmpty()) {
+            return List.of();
+        }
+        Map<Long, User> usersById = loadUsersByIds(extractUserIds(messages));
+        return messages.stream()
+                .map(msg -> toMessageDTO(msg, usersById))
+                .collect(Collectors.toList());
+    }
+
+    private MessageDTO toMessageDTO(Message msg, Map<Long, User> usersById) {
+        MessageDTO dto = new MessageDTO();
+        dto.setId(msg.getId());
+        dto.setConversationId(msg.getConversationId());
+        dto.setFromUserId(msg.getFromUserId());
+        dto.setToUserId(msg.getToUserId());
+        dto.setContent(msg.getContent());
+        dto.setStatus(msg.getStatus());
+        dto.setCreateTime(msg.getCreateTime());
+
+        User fromUser = usersById.get(msg.getFromUserId());
+        if (fromUser != null) {
+            dto.setFromUserName(fromUser.getUsername());
+            dto.setFromUserAvatar(fromUser.getAvatarUrl());
+        }
+
+        User toUser = usersById.get(msg.getToUserId());
+        if (toUser != null) {
+            dto.setToUserName(toUser.getUsername());
+            dto.setToUserAvatar(toUser.getAvatarUrl());
+        }
+
+        return dto;
     }
 
     private Message pickLatestMessage(Message current, Message candidate) {

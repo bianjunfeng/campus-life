@@ -1,6 +1,7 @@
 package com.campus.campus_life_backend.service;
 
 import com.campus.campus_life_backend.modules.message.dto.ConversationDTO;
+import com.campus.campus_life_backend.modules.message.dto.MessageDTO;
 import com.campus.campus_life_backend.modules.message.entity.Message;
 import com.campus.campus_life_backend.modules.message.mapper.MessageMapper;
 import com.campus.campus_life_backend.modules.message.service.MessageService;
@@ -19,8 +20,11 @@ import java.util.Map;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertIterableEquals;
+import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.anyList;
 import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 @ExtendWith(MockitoExtension.class)
@@ -61,6 +65,42 @@ class MessageServiceTest {
         assertEquals(2, conversations.get(0).getUnreadCount());
     }
 
+    @Test
+    void shouldSyncLatestMessagesByUserAndClampLimit() {
+        LocalDateTime now = LocalDateTime.of(2026, 3, 20, 10, 0, 0);
+        Message first = buildMessage(10L, "1_2", 1L, 2L, "first", now.minusMinutes(1));
+        Message second = buildMessage(11L, "1_2", 2L, 1L, "second", now);
+
+        when(userMapper.findById(2L)).thenReturn(buildUser(2L, "user-2"));
+        when(messageMapper.findConversationId(1L, 2L)).thenReturn("1_2");
+        when(messageMapper.findLatestByConversationId("1_2", 200)).thenReturn(List.of(first, second));
+        when(userMapper.findByIds(anyList())).thenReturn(List.of(buildUser(1L, "user-1"), buildUser(2L, "user-2")));
+
+        List<MessageDTO> messages = messageService.syncMessagesByUserId(1L, 2L, null, null, 500);
+
+        assertIterableEquals(List.of(10L, 11L), messages.stream().map(MessageDTO::getId).toList());
+        assertEquals("user-2", messages.get(0).getToUserName());
+        verify(messageMapper).findLatestByConversationId("1_2", 200);
+    }
+
+    @Test
+    void shouldReturnEmptySyncResultForConversationWithoutMessages() {
+        when(userMapper.findById(2L)).thenReturn(buildUser(2L, "user-2"));
+        when(messageMapper.findConversationId(1L, 2L)).thenReturn(null);
+
+        List<MessageDTO> messages = messageService.syncMessagesByUserId(1L, 2L, null, null, 100);
+
+        assertTrue(messages.isEmpty());
+    }
+
+    @Test
+    void shouldRejectSyncWhenBeforeAndAfterAreBothProvided() {
+        when(messageMapper.existsConversationForUser("1_2", 1L)).thenReturn(1);
+
+        assertThrows(IllegalArgumentException.class,
+                () -> messageService.syncMessagesByConversationId("1_2", 1L, 10L, 11L, 100));
+    }
+
     private Message buildMessage(Long id, String conversationId, Long fromUserId, Long toUserId, String content, LocalDateTime createTime) {
         Message message = new Message();
         message.setId(id);
@@ -78,6 +118,7 @@ class MessageServiceTest {
         user.setId(id);
         user.setUsername(username);
         user.setAvatarUrl("avatar-" + id);
+        user.setStatus(1);
         return user;
     }
 }

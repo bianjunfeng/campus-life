@@ -26,6 +26,25 @@ export interface Conversation {
   isOnline?: boolean
 }
 
+export interface MessageWebSocketTicket {
+  ticket: string
+  expiresInSeconds: number
+}
+
+export interface MessageSyncParams {
+  limit?: number
+  beforeId?: number
+  afterId?: number
+}
+
+export interface MessageSyncResult {
+  conversationId: string
+  messages: Message[]
+  limit: number
+  beforeId?: number
+  afterId?: number
+}
+
 export interface NotificationItem {
   id: string
   type: string
@@ -51,6 +70,15 @@ export const sendMessage = async (toUserId: number, content: string): Promise<Me
     return data.data
   }
   throw new Error(data.message || '发送消息失败')
+}
+
+export const createMessageWebSocketTicket = async (): Promise<MessageWebSocketTicket> => {
+  const response = await http.post('/message/ws-ticket')
+  const data = response.data
+  if (data.code === 200) {
+    return data.data
+  }
+  throw new Error(data.message || '获取消息连接凭证失败')
 }
 
 // 获取会话列表
@@ -79,6 +107,20 @@ export const getMessagesByConversationId = async (
   throw new Error(data.message || '获取消息列表失败')
 }
 
+export const syncMessagesByConversationId = async (
+  conversationId: string,
+  params: MessageSyncParams = {}
+): Promise<MessageSyncResult> => {
+  const response = await http.get(`/message/conversation/${conversationId}/messages/sync`, {
+    params
+  })
+  const data = response.data
+  if (data.code === 200) {
+    return data.data
+  }
+  throw new Error(data.message || '同步消息失败')
+}
+
 // 通过用户ID获取消息列表
 export const getMessagesByUserId = async (
   otherUserId: number,
@@ -93,6 +135,20 @@ export const getMessagesByUserId = async (
     return data.data
   }
   throw new Error(data.message || '获取消息列表失败')
+}
+
+export const syncMessagesByUserId = async (
+  otherUserId: number,
+  params: MessageSyncParams = {}
+): Promise<MessageSyncResult> => {
+  const response = await http.get(`/message/user/${otherUserId}/messages/sync`, {
+    params
+  })
+  const data = response.data
+  if (data.code === 200) {
+    return data.data
+  }
+  throw new Error(data.message || '同步消息失败')
 }
 
 // 标记会话为已读

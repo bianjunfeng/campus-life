@@ -155,9 +155,11 @@ import {
   markConversationAsRead,
   markNotificationsAsRead,
   type Conversation,
+  type Message as ChatApiMessage,
   type NotificationCategory,
   type NotificationItem
 } from '@/api/message'
+import { messageSocket } from '@/api/messageSocket'
 import { showConfirm } from '@/utils/dialog'
 import { getStoredUserInfoObject } from '@/utils/authStorage'
 import { notify } from '@/utils/notify'
@@ -193,6 +195,8 @@ const searchLoading = ref(false)
 let searchTimer: number | null = null
 let searchVersion = 0
 let pollInterval: number | null = null
+let unsubscribeSocketMessage: (() => void) | null = null
+let handleWindowFocus: (() => void) | null = null
 const unreadLikesCountRef = ref(0)
 const unreadFollowsCountRef = ref(0)
 const unreadCommentsCountRef = ref(0)
@@ -256,7 +260,7 @@ const startPolling = () => {
   pollInterval = window.setInterval(() => {
     loadConversations()
     loadTopNotificationCounts()
-  }, 5000)  // 每5秒轮询一次
+  }, 60000)  // WebSocket负责实时更新，这里只做低频对账
 }
 
 // 停止轮询
@@ -304,6 +308,54 @@ const sortByTimeDesc = (list: Message[]) => {
     const tb = new Date(b.time).getTime()
     return (Number.isNaN(tb) ? 0 : tb) - (Number.isNaN(ta) ? 0 : ta)
   })
+}
+
+const applyRealtimeChatMessage = (chatMessage: ChatApiMessage) => {
+  const currentUserId = resolveCurrentUserId()
+  if (!currentUserId) return
+
+  const otherUserId = chatMessage.fromUserId === currentUserId ? chatMessage.toUserId : chatMessage.fromUserId
+  if (!otherUserId) return
+
+  const isIncoming = chatMessage.toUserId === currentUserId
+  const otherUserName = chatMessage.fromUserId === currentUserId
+    ? chatMessage.toUserName
+    : chatMessage.fromUserName
+  const otherUserAvatar = chatMessage.fromUserId === currentUserId
+    ? chatMessage.toUserAvatar
+    : chatMessage.fromUserAvatar
+
+  const existing = messages.value.find(item => (
+    item.type === 'chat' &&
+    (item.conversationId === chatMessage.conversationId || item.otherUserId === otherUserId)
+  ))
+
+  if (existing) {
+    existing.message = chatMessage.content || ''
+    existing.time = chatMessage.createTime
+    existing.conversationId = chatMessage.conversationId
+    existing.otherUserId = otherUserId
+    if (isIncoming) {
+      existing.unread = true
+      existing.unreadCount = (existing.unreadCount || 0) + 1
+    }
+  } else {
+    messages.value.unshift({
+      id: otherUserId,
+      type: 'chat',
+      name: otherUserName || `用户${otherUserId}`,
+      avatarUrl: otherUserAvatar || '',
+      message: chatMessage.content || '',
+      time: chatMessage.createTime,
+      unread: isIncoming,
+      unreadCount: isIncoming ? 1 : 0,
+      isOnline: false,
+      conversationId: chatMessage.conversationId,
+      otherUserId
+    })
+  }
+
+  messages.value = sortByTimeDesc([...messages.value])
 }
 
 const buildCommentSearchResults = (keywordLower: string, comments: NotificationItem[]): Message[] => {
@@ -554,11 +606,28 @@ onMounted(() => {
   loadConversations()
   loadTopNotificationCounts()
   startPolling()
+  unsubscribeSocketMessage = messageSocket.onChatMessage(applyRealtimeChatMessage)
+  messageSocket.connect().catch(error => {
+    console.warn('消息WebSocket连接失败:', error)
+  })
+  handleWindowFocus = () => {
+    loadConversations()
+    loadTopNotificationCounts()
+  }
+  window.addEventListener('focus', handleWindowFocus)
 })
 
 // 组件卸载
 onUnmounted(() => {
   stopPolling()
+  if (unsubscribeSocketMessage) {
+    unsubscribeSocketMessage()
+    unsubscribeSocketMessage = null
+  }
+  if (handleWindowFocus) {
+    window.removeEventListener('focus', handleWindowFocus)
+    handleWindowFocus = null
+  }
   if (searchTimer) {
     clearTimeout(searchTimer)
     searchTimer = null

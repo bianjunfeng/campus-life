@@ -8,10 +8,12 @@ import com.campus.campus_life_backend.common.security.support.CurrentUserAccesso
 import com.campus.campus_life_backend.modules.message.dto.ConversationDTO;
 import com.campus.campus_life_backend.modules.message.dto.MarkNotificationsReadRequest;
 import com.campus.campus_life_backend.modules.message.dto.MessageDTO;
+import com.campus.campus_life_backend.modules.message.dto.MessageWebSocketTicketResponse;
 import com.campus.campus_life_backend.modules.message.dto.NotificationItemDTO;
-import com.campus.campus_life_backend.modules.message.entity.Message;
 import com.campus.campus_life_backend.modules.message.service.MessageNotificationService;
+import com.campus.campus_life_backend.modules.message.service.MessageSendService;
 import com.campus.campus_life_backend.modules.message.service.MessageService;
+import com.campus.campus_life_backend.modules.message.websocket.MessageWebSocketTicketService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.web.bind.annotation.*;
@@ -29,18 +31,24 @@ public class MessageController {
 
     private final CurrentUserAccessor currentUserAccessor;
     private final MessageService messageService;
+    private final MessageSendService messageSendService;
     private final MessageNotificationService messageNotificationService;
+    private final MessageWebSocketTicketService webSocketTicketService;
 
     public MessageController(CurrentUserAccessor currentUserAccessor,
                              MessageService messageService,
-                             MessageNotificationService messageNotificationService) {
+                             MessageSendService messageSendService,
+                             MessageNotificationService messageNotificationService,
+                             MessageWebSocketTicketService webSocketTicketService) {
         this.currentUserAccessor = currentUserAccessor;
         this.messageService = messageService;
+        this.messageSendService = messageSendService;
         this.messageNotificationService = messageNotificationService;
+        this.webSocketTicketService = webSocketTicketService;
     }
 
     @PostMapping("/send")
-    public ApiResponse<Message> sendMessage(@RequestBody Map<String, Object> request) {
+    public ApiResponse<MessageDTO> sendMessage(@RequestBody Map<String, Object> request) {
         Long fromUserId = currentUserAccessor.requireUserId();
         Long toUserId = parseLong(request.get("toUserId"));
         String content = (String) request.get("content");
@@ -52,7 +60,7 @@ public class MessageController {
         }
 
         try {
-            Message message = messageService.sendMessage(fromUserId, toUserId, content);
+            MessageDTO message = messageSendService.sendMessage(fromUserId, toUserId, content);
             return ApiResponse.success(message);
         } catch (BusinessException e) {
             throw e;
@@ -62,6 +70,15 @@ public class MessageController {
             logger.error("发送消息失败", e);
             throw new BusinessException(BusinessErrorCode.INTERNAL_ERROR, "发送消息失败，请稍后重试", e);
         }
+    }
+
+    @PostMapping("/ws-ticket")
+    public ApiResponse<MessageWebSocketTicketResponse> createWebSocketTicket() {
+        String ticket = webSocketTicketService.createTicket(currentUserAccessor.requirePrincipal());
+        return ApiResponse.success(new MessageWebSocketTicketResponse(
+                ticket,
+                MessageWebSocketTicketService.EXPIRES_IN_SECONDS
+        ));
     }
 
     @GetMapping("/conversations")
@@ -88,6 +105,27 @@ public class MessageController {
         }
     }
 
+    @GetMapping("/conversation/{conversationId}/messages/sync")
+    public ApiResponse<Map<String, Object>> syncMessages(
+            @PathVariable String conversationId,
+            @RequestParam(required = false) Long beforeId,
+            @RequestParam(required = false) Long afterId,
+            @RequestParam(defaultValue = "100") Integer limit) {
+        Long userId = currentUserAccessor.requireUserId();
+        try {
+            List<MessageDTO> messages = messageService.syncMessagesByConversationId(conversationId, userId, beforeId, afterId, limit);
+            Map<String, Object> result = new HashMap<>();
+            result.put("conversationId", conversationId);
+            result.put("messages", messages);
+            result.put("beforeId", beforeId);
+            result.put("afterId", afterId);
+            result.put("limit", normalizeLimit(limit));
+            return ApiResponse.success(result);
+        } catch (IllegalArgumentException e) {
+            throw new BusinessException(BusinessErrorCode.INVALID_PARAM, e.getMessage(), e);
+        }
+    }
+
     @GetMapping("/user/{otherUserId}/messages")
     public ApiResponse<Map<String, Object>> getMessagesByUserId(
             @PathVariable Long otherUserId,
@@ -103,6 +141,29 @@ public class MessageController {
             result.put("messages", messages);
             result.put("page", page);
             result.put("pageSize", pageSize);
+            return ApiResponse.success(result);
+        } catch (IllegalArgumentException e) {
+            throw new BusinessException(BusinessErrorCode.INVALID_PARAM, e.getMessage(), e);
+        }
+    }
+
+    @GetMapping("/user/{otherUserId}/messages/sync")
+    public ApiResponse<Map<String, Object>> syncMessagesByUserId(
+            @PathVariable Long otherUserId,
+            @RequestParam(required = false) Long beforeId,
+            @RequestParam(required = false) Long afterId,
+            @RequestParam(defaultValue = "100") Integer limit) {
+        Long userId = currentUserAccessor.requireUserId();
+        try {
+            String conversationId = messageService.getOrCreateConversationId(userId, otherUserId);
+            List<MessageDTO> messages = messageService.syncMessagesByUserId(userId, otherUserId, beforeId, afterId, limit);
+
+            Map<String, Object> result = new HashMap<>();
+            result.put("conversationId", conversationId);
+            result.put("messages", messages);
+            result.put("beforeId", beforeId);
+            result.put("afterId", afterId);
+            result.put("limit", normalizeLimit(limit));
             return ApiResponse.success(result);
         } catch (IllegalArgumentException e) {
             throw new BusinessException(BusinessErrorCode.INVALID_PARAM, e.getMessage(), e);
@@ -196,5 +257,9 @@ public class MessageController {
         }
         String normalizedValue = value.startsWith("sys_") ? value.substring(4) : value;
         return parseLong(normalizedValue);
+    }
+
+    private int normalizeLimit(Integer limit) {
+        return limit == null || limit < 1 ? 100 : Math.min(limit, 200);
     }
 }

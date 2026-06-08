@@ -25,6 +25,17 @@ public interface MessageMapper {
                                        @Param("offset") Integer offset, 
                                        @Param("limit") Integer limit);
 
+    List<Message> findLatestByConversationId(@Param("conversationId") String conversationId,
+                                             @Param("limit") Integer limit);
+
+    List<Message> findAfterIdByConversationId(@Param("conversationId") String conversationId,
+                                              @Param("afterId") Long afterId,
+                                              @Param("limit") Integer limit);
+
+    List<Message> findBeforeIdByConversationId(@Param("conversationId") String conversationId,
+                                               @Param("beforeId") Long beforeId,
+                                               @Param("limit") Integer limit);
+
     /**
      * 鑾峰彇鐢ㄦ埛鐨勬墍鏈変細璇濆垪琛紙姣忎釜浼氳瘽杩斿洖鏈€鏂颁竴鏉℃秷鎭級
      */

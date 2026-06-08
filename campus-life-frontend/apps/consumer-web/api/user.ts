@@ -32,6 +32,12 @@ export interface PublicUserProfile {
   isFollowing?: boolean
 }
 
+export interface CurrentUserStats {
+  postCount: number
+  followingCount: number
+  followerCount: number
+}
+
 /**
  * 获取用户的粉丝列表
  */
@@ -101,3 +107,14 @@ export async function getPublicUserProfile(userId: number): Promise<PublicUserPr
   throw new Error(data.message || '获取用户主页失败')
 }
 
+export async function getCurrentUserStats(): Promise<CurrentUserStats> {
+  const { data } = await http.get('/users/me/stats')
+  if (data.code === 200 && data.data) {
+    return {
+      postCount: Number(data.data.postCount || 0),
+      followingCount: Number(data.data.followingCount || 0),
+      followerCount: Number(data.data.followerCount || 0)
+    }
+  }
+  throw new Error(data.message || '获取用户统计失败')
+}

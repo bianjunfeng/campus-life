@@ -300,6 +300,7 @@ import { fetchCurrentUser, logoutApi } from '../../api/auth'
 import { clearAuthState, getStoredUserInfoObject, getStoredUserRole } from '../../utils/authStorage'
 import type { UserInfo } from '../../api/auth'
 import { getCartItems } from '../../api/cart'
+import { getCurrentUserStats } from '../../api/user'
 import http from '../../api/http'
 
 const router = useRouter()
@@ -398,10 +399,8 @@ const loadUserInfo = async () => {
       // 检查是否已通过任一认证（学生或商家，二选一）
       await checkAnyAuthStatus()
       await loadAuthInfo()
-      
-      // TODO: 加载统计数据（发布数、关注数、粉丝数）
-      // 这里暂时使用默认值，后续可以调用专门的统计API
-      loadUserStats()
+
+      await loadUserStats()
       loadCartSummary()
     }
   } catch (error: any) {
@@ -477,14 +476,7 @@ const loadAuthInfo = async () => {
 // 加载用户统计数据
 const loadUserStats = async () => {
   try {
-    const { data } = await http.get('/users/me/stats')
-    if (data.code === 200 && data.data) {
-      stats.value = {
-        postCount: data.data.postCount || 0,
-        followingCount: data.data.followingCount || 0,
-        followerCount: data.data.followerCount || 0
-      }
-    }
+    stats.value = await getCurrentUserStats()
   } catch (error) {
     console.error('加载统计数据失败:', error)
     // 使用默认值
