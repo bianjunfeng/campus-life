@@ -8,6 +8,7 @@ import {
   setStoredUserInfo,
   setStoredUserRole
 } from '../utils/authStorage'
+import { markPresenceOffline } from '../shared/presence/presenceClient'
 
 export interface LoginPayload {
   phone: string
@@ -166,11 +167,13 @@ export async function fetchCurrentUser() {
 }
 
 export async function logoutApi() {
+  await markPresenceOffline()
   const { data } = await http.post('/auth/logout')
   return data as { code: number; message: string }
 }
 
 export async function logoutAllApi() {
+  await markPresenceOffline()
   const { data } = await http.post('/auth/logout-all')
   return data as { code: number; message: string }
 }

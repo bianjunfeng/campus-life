@@ -17,4 +17,8 @@ COPY --from=build /workspace/campus-life-frontend/dist/merchant-web/apps/merchan
 COPY --from=build /workspace/campus-life-frontend/dist/admin-web/apps/admin-web/ /usr/share/nginx/admin-web/
 COPY deploy/docker/frontend/default.conf.template /etc/nginx/templates/default.conf.template
 
+RUN ln -sf apps/consumer-web/index.html /usr/share/nginx/consumer-web/index.html \
+    && ln -sf apps/merchant-web/index.html /usr/share/nginx/merchant-web/index.html \
+    && ln -sf apps/admin-web/index.html /usr/share/nginx/admin-web/index.html
+
 EXPOSE 80

@@ -17,6 +17,7 @@ import com.campus.campus_life_backend.modules.user.mapper.StudentProfileMapper;
 import com.campus.campus_life_backend.modules.user.mapper.UserMapper;
 import com.campus.campus_life_backend.modules.auth.service.impl.WechatOAuthService;
 import com.campus.campus_life_backend.modules.auth.service.impl.QQOAuthService;
+import com.campus.campus_life_backend.modules.presence.service.PresenceService;
 import jakarta.servlet.http.HttpServletRequest;
 import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.security.crypto.password.PasswordEncoder;
@@ -46,6 +47,7 @@ public class AuthService {
     private final AdminAuthUtil adminAuthUtil;
     private final UserSearchService userSearchService;
     private final UserSearchEventPublisher userSearchEventPublisher;
+    private final PresenceService presenceService;
 
     public AuthService(UserMapper userMapper, PasswordEncoder passwordEncoder,
                       VerificationService verificationService, StudentProfileMapper studentProfileMapper,
@@ -56,7 +58,8 @@ public class AuthService {
                       LoginAuditLogService loginAuditLogService,
                       AdminAuthUtil adminAuthUtil,
                       ObjectProvider<UserSearchService> userSearchServiceProvider,
-                      ObjectProvider<UserSearchEventPublisher> userSearchEventPublisherProvider) {
+                      ObjectProvider<UserSearchEventPublisher> userSearchEventPublisherProvider,
+                      ObjectProvider<PresenceService> presenceServiceProvider) {
         this.userMapper = userMapper;
         this.passwordEncoder = passwordEncoder;
         this.verificationService = verificationService;
@@ -71,6 +74,7 @@ public class AuthService {
         this.adminAuthUtil = adminAuthUtil;
         this.userSearchService = userSearchServiceProvider == null ? null : userSearchServiceProvider.getIfAvailable();
         this.userSearchEventPublisher = userSearchEventPublisherProvider == null ? null : userSearchEventPublisherProvider.getIfAvailable();
+        this.presenceService = presenceServiceProvider == null ? null : presenceServiceProvider.getIfAvailable();
     }
 
     @Transactional
@@ -301,6 +305,7 @@ public class AuthService {
                 ip,
                 userAgent
         );
+        markPresenceOnline(user, sessionId, null, ip, userAgent);
         loginAuditLogService.recordSuccess(user, account, loginType, ip, userAgent, sessionId);
         return tokens;
     }
@@ -445,6 +450,7 @@ public class AuthService {
             // 生成新的令牌对
             Map<String, String> tokens = generateTokens(userId, sessionId);
             authSessionService.updateTokenPair(tokens.get("sessionId"), tokens.get("accessToken"), tokens.get("refreshToken"));
+            markPresenceOnline(userMapper.findById(userId), tokens.get("sessionId"), null, null, null);
             return tokens;
         } catch (BusinessException e) {
             throw toRefreshFailClosedException(e);
@@ -691,6 +697,20 @@ public class AuthService {
         } catch (Exception ignored) {
         }
         throw new BusinessException(BusinessErrorCode.REFRESH_TOKEN_REUSED);
+    }
+
+    private void markPresenceOnline(User user, String sessionId, String portal, String ip, String userAgent) {
+        if (presenceService == null || user == null || user.getId() == null) {
+            return;
+        }
+        presenceService.markOnline(
+                user.getId(),
+                sessionId,
+                RoleCode.fromDbRole(user.getRole()).name(),
+                portal,
+                ip,
+                userAgent
+        );
     }
 
     private BusinessException toRefreshFailClosedException(BusinessException e) {

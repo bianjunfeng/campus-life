@@ -21,6 +21,7 @@ http.interceptors.request.use(config => {
   if (token) {
     config.headers = config.headers || {}
     config.headers.Authorization = `Bearer ${token}`
+    config.headers['X-Campus-Portal'] = sessionStorage.getItem('campusPortal') || 'consumer'
   }
   return config
 })

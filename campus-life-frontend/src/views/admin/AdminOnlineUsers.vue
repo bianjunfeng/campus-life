@@ -35,6 +35,19 @@
           <div class="stat-value">{{ totalOnline }}</div>
         </div>
       </div>
+      <div class="stat-card">
+        <div class="stat-icon stat-icon-session">
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <rect x="3" y="4" width="18" height="14" rx="2"></rect>
+            <path d="M8 20h8"></path>
+            <path d="M12 18v2"></path>
+          </svg>
+        </div>
+        <div class="stat-content">
+          <div class="stat-label">在线会话数</div>
+          <div class="stat-value">{{ totalOnlineSessions }}</div>
+        </div>
+      </div>
     </div>
     
     <!-- 在线用户列表 -->
@@ -45,6 +58,7 @@
             <th>用户ID</th>
             <th>用户名</th>
             <th>昵称</th>
+            <th>来源</th>
             <th>登录IP</th>
             <th>登录地点</th>
             <th>登录时间</th>
@@ -53,14 +67,15 @@
           </tr>
         </thead>
         <tbody>
-          <tr v-for="user in userList" :key="user.userId">
+          <tr v-for="user in userList" :key="user.sessionId || `${user.userId}-${user.lastSeenTime || user.lastActiveTime}`">
             <td>{{ user.userId }}</td>
             <td>{{ user.username || '-' }}</td>
             <td>{{ user.nickname || '-' }}</td>
-            <td>{{ user.loginIp || '-' }}</td>
+            <td>{{ formatPortal(user.portal) }}</td>
+            <td>{{ user.loginIp || user.ip || '-' }}</td>
             <td>{{ user.loginLocation || '-' }}</td>
             <td>{{ formatTime(user.loginTime) }}</td>
-            <td>{{ formatTime(user.lastActiveTime) }}</td>
+            <td :title="user.userAgent || ''">{{ formatTime(user.lastSeenTime || user.lastActiveTime) }}</td>
             <td class="action-cell">
               <button @click="forceLogout(user.userId)" class="btn btn-danger">强制下线</button>
             </td>
@@ -88,6 +103,7 @@ const page = ref(1)
 const size = ref(20)
 const total = ref(0)
 const totalOnline = ref(0)
+const totalOnlineSessions = ref(0)
 const filterUsername = ref('')
 const filterIp = ref('')
 let refreshTimer: number | null = null
@@ -110,7 +126,8 @@ const loadUsers = async () => {
     const data = await getOnlineUsers(params)
     userList.value = data.list
     total.value = data.total
-    totalOnline.value = data.totalOnline || data.total
+    totalOnline.value = data.totalOnlineUsers ?? data.totalOnline ?? data.total
+    totalOnlineSessions.value = data.totalOnlineSessions ?? data.total
   } catch (error) {
     console.error('加载在线用户失败:', error)
   }
@@ -154,9 +171,19 @@ const forceLogout = async (userId: number) => {
   }
 }
 
-const formatTime = (time: string) => {
+const formatTime = (time?: string) => {
   if (!time) return '-'
   return new Date(time).toLocaleString('zh-CN')
+}
+
+const formatPortal = (portal?: string) => {
+  const map: Record<string, string> = {
+    consumer: '用户端',
+    merchant: '商家端',
+    admin: '管理端',
+    'message-ws': '私信'
+  }
+  return portal ? map[portal] || portal : '-'
 }
 
 // 自动刷新（每30秒）
@@ -227,6 +254,9 @@ onUnmounted(() => {
 
 .stats-section {
   margin-bottom: 20px;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 16px;
 }
 
 .stat-card {
@@ -253,6 +283,11 @@ onUnmounted(() => {
 .stat-icon svg {
   width: 28px;
   height: 28px;
+}
+
+.stat-icon-session {
+  background: #f6ffed;
+  color: #52c41a;
 }
 
 .stat-content {

@@ -6,10 +6,12 @@ import com.campus.campus_life_backend.common.security.service.LoginPrincipalFact
 import com.campus.campus_life_backend.common.util.JwtUtil;
 import com.campus.campus_life_backend.modules.auth.service.AuthSessionService;
 import com.campus.campus_life_backend.modules.auth.service.TokenService;
+import com.campus.campus_life_backend.modules.presence.service.PresenceService;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
+import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.http.HttpHeaders;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.GrantedAuthority;
@@ -36,16 +38,19 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
     private final TokenService tokenService;
     private final LoginPrincipalFactory loginPrincipalFactory;
     private final AuthSessionService authSessionService;
+    private final PresenceService presenceService;
     private final ConcurrentMap<String, Long> lastSeenUpdateMillis = new ConcurrentHashMap<>();
 
     public JwtAuthenticationFilter(JwtUtil jwtUtil,
                                    TokenService tokenService,
                                    LoginPrincipalFactory loginPrincipalFactory,
-                                   AuthSessionService authSessionService) {
+                                   AuthSessionService authSessionService,
+                                   ObjectProvider<PresenceService> presenceServiceProvider) {
         this.jwtUtil = jwtUtil;
         this.tokenService = tokenService;
         this.loginPrincipalFactory = loginPrincipalFactory;
         this.authSessionService = authSessionService;
+        this.presenceService = presenceServiceProvider == null ? null : presenceServiceProvider.getIfAvailable();
     }
 
     @Override
@@ -67,7 +72,7 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
                         );
                 authentication.setDetails(new WebAuthenticationDetailsSource().buildDetails(request));
                 SecurityContextHolder.getContext().setAuthentication(authentication);
-                touchLastSeenIfNeeded(token);
+                touchLastSeenIfNeeded(token, principal, request);
             }
         }
 
@@ -92,14 +97,14 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
         return loginPrincipalFactory.create(userId);
     }
 
-    private void touchLastSeenIfNeeded(String token) {
+    private void touchLastSeenIfNeeded(String token, LoginPrincipal principal, HttpServletRequest request) {
         String sessionId = jwtUtil.getSessionIdFromToken(token);
         if (sessionId == null || sessionId.isBlank()) {
             return;
         }
         long now = System.currentTimeMillis();
         Long last = lastSeenUpdateMillis.get(sessionId);
-        if (last != null && now - last < 60_000L) {
+        if (last != null && now - last < 30_000L) {
             return;
         }
         lastSeenUpdateMillis.put(sessionId, now);
@@ -107,6 +112,26 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
             authSessionService.touchLastSeen(sessionId);
         } catch (Exception ignored) {
         }
+        try {
+            if (presenceService != null) {
+                presenceService.markOnline(
+                        principal,
+                        sessionId,
+                        request.getHeader("X-Campus-Portal"),
+                        clientIp(request),
+                        request.getHeader("User-Agent")
+                );
+            }
+        } catch (Exception ignored) {
+        }
+    }
+
+    private String clientIp(HttpServletRequest request) {
+        String ip = request.getHeader("X-Forwarded-For");
+        if (ip == null || ip.isBlank() || "unknown".equalsIgnoreCase(ip)) {
+            ip = request.getRemoteAddr();
+        }
+        return ip;
     }
 
     private Collection<? extends GrantedAuthority> buildAuthorities(LoginPrincipal principal) {

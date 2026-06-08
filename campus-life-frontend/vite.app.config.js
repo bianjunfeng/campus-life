@@ -85,10 +85,14 @@ export function createAppConfig(appName, devPort) {
           input: appIndexPath,
           output: {
             manualChunks(id) {
-              if (id.includes('node_modules/echarts') || id.includes('node_modules/zrender')) {
-                return 'charts-vendor'
+              const normalizedId = id.replace(/\\/g, '/')
+              if (normalizedId.includes('node_modules/zrender')) {
+                return 'zrender-vendor'
               }
-              if (id.includes('node_modules/vue') || id.includes('node_modules/vue-router')) {
+              if (normalizedId.includes('node_modules/echarts')) {
+                return 'echarts-vendor'
+              }
+              if (normalizedId.includes('node_modules/vue') || normalizedId.includes('node_modules/vue-router')) {
                 return 'vue-vendor'
               }
             }

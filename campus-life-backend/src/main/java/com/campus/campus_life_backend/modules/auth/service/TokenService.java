@@ -2,6 +2,7 @@ package com.campus.campus_life_backend.modules.auth.service;
 
 import com.campus.campus_life_backend.common.exception.BusinessErrorCode;
 import com.campus.campus_life_backend.common.exception.BusinessException;
+import com.campus.campus_life_backend.modules.presence.service.PresenceService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -26,6 +27,7 @@ public class TokenService {
     
     private final RedisTemplate<String, String> redisTemplate;
     private final AuthSessionService authSessionService;
+    private final PresenceService presenceService;
     private boolean useRedis = false;
     @Value("${jwt.refresh-expiration:2592000000}")
     private Long refreshExpirationMillis = 2592000000L;
@@ -44,14 +46,21 @@ public class TokenService {
     private static final long REFRESH_LOCK_TTL_SECONDS = 10L;
     
     public TokenService(RedisTemplate<String, String> redisTemplate) {
-        this(redisTemplate, null);
+        this(redisTemplate, null, null);
+    }
+
+    public TokenService(RedisTemplate<String, String> redisTemplate,
+                        ObjectProvider<AuthSessionService> authSessionServiceProvider) {
+        this(redisTemplate, authSessionServiceProvider, null);
     }
 
     @Autowired(required = false)
     public TokenService(RedisTemplate<String, String> redisTemplate,
-                        ObjectProvider<AuthSessionService> authSessionServiceProvider) {
+                        ObjectProvider<AuthSessionService> authSessionServiceProvider,
+                        ObjectProvider<PresenceService> presenceServiceProvider) {
         this.redisTemplate = redisTemplate;
         this.authSessionService = authSessionServiceProvider == null ? null : authSessionServiceProvider.getIfAvailable();
+        this.presenceService = presenceServiceProvider == null ? null : presenceServiceProvider.getIfAvailable();
         // 测试 Redis 连接
         if (redisTemplate != null) {
             try {
@@ -234,6 +243,7 @@ public class TokenService {
             }
             redisTemplate.delete(userSessionsKey(userId));
             markUserSessions(userId, sessionStatus);
+            markPresenceUserOffline(userId);
             logger.info("已吊销用户全部令牌: userId={}, sessions={}, legacyAccessKeys={}, legacyRefreshKeys={}",
                     userId,
                     sessionIds.size(),
@@ -537,6 +547,7 @@ public class TokenService {
         redisTemplate.delete(Set.of(sessionUserKey(sessionId), accessSessionKey, refreshSessionKey));
         redisTemplate.opsForSet().remove(userSessionsKey(userId), sessionId);
         markSessionStatus(sessionId, sessionStatus);
+        markPresenceSessionOffline(userId, sessionId);
     }
 
     private void markSessionStatus(String sessionId, int sessionStatus) {
@@ -551,6 +562,26 @@ public class TokenService {
             }
         } catch (Exception e) {
             logger.warn("同步会话状态失败: sessionId={}, status={}, error={}", sessionId, sessionStatus, e.getMessage());
+        }
+    }
+
+    private void markPresenceSessionOffline(Long userId, String sessionId) {
+        try {
+            if (presenceService != null) {
+                presenceService.markOffline(userId, sessionId);
+            }
+        } catch (Exception e) {
+            logger.warn("同步在线状态失败: userId={}, sessionId={}, error={}", userId, sessionId, e.getMessage());
+        }
+    }
+
+    private void markPresenceUserOffline(Long userId) {
+        try {
+            if (presenceService != null) {
+                presenceService.markUserOffline(userId);
+            }
+        } catch (Exception e) {
+            logger.warn("同步用户在线状态失败: userId={}, error={}", userId, e.getMessage());
         }
     }
 

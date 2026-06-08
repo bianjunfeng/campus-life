@@ -16,6 +16,7 @@ import java.util.Optional;
 public class MessageWebSocketHandshakeInterceptor implements HandshakeInterceptor {
 
     public static final String PRINCIPAL_ATTR = "messageWsPrincipal";
+    public static final String SESSION_ID_ATTR = "messageWsSessionId";
 
     private final MessageWebSocketTicketService ticketService;
 
@@ -32,12 +33,15 @@ public class MessageWebSocketHandshakeInterceptor implements HandshakeIntercepto
                 .build()
                 .getQueryParams()
                 .getFirst("ticket");
-        Optional<LoginPrincipal> principal = ticketService.consumeTicket(ticket);
-        if (principal.isEmpty()) {
+        Optional<MessageWebSocketTicketService.ConsumedTicket> consumed = ticketService.consumeTicket(ticket);
+        if (consumed.isEmpty()) {
             response.setStatusCode(HttpStatus.UNAUTHORIZED);
             return false;
         }
-        attributes.put(PRINCIPAL_ATTR, principal.get());
+        attributes.put(PRINCIPAL_ATTR, consumed.get().principal());
+        if (consumed.get().sessionId() != null && !consumed.get().sessionId().isBlank()) {
+            attributes.put(SESSION_ID_ATTR, consumed.get().sessionId());
+        }
         return true;
     }
 

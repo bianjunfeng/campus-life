@@ -5,9 +5,9 @@ import com.campus.campus_life_backend.common.security.support.CurrentUserAccesso
 import com.campus.campus_life_backend.modules.admin.service.AdminApiCatalogService;
 import com.campus.campus_life_backend.modules.admin.service.AdminDashboardQueryService;
 import com.campus.campus_life_backend.modules.admin.service.AdminOperationLogQueryService;
-import com.campus.campus_life_backend.modules.auth.service.AuthSessionService;
 import com.campus.campus_life_backend.modules.auth.service.LoginAuditLogService;
 import com.campus.campus_life_backend.modules.auth.service.TokenService;
+import com.campus.campus_life_backend.modules.presence.service.PresenceService;
 import com.campus.campus_life_backend.modules.search.service.PostSearchService;
 import com.campus.campus_life_backend.modules.search.service.SearchOpsService;
 import com.campus.campus_life_backend.modules.search.service.UserSearchService;
@@ -51,31 +51,32 @@ class AdminDashboardControllerTest {
     private TokenService tokenService;
 
     @Mock
-    private AuthSessionService authSessionService;
+    private LoginAuditLogService loginAuditLogService;
 
     @Mock
-    private LoginAuditLogService loginAuditLogService;
+    private PresenceService presenceService;
 
     @InjectMocks
     private AdminDashboardController controller;
 
     @Test
-    void getOnlineUsersShouldReturnRealSessionPage() {
+    void getOnlineUsersShouldReturnPresenceSessionPage() {
         given(currentUserAccessor.requireUserId()).willReturn(99L);
         Map<String, Object> page = Map.of(
                 "list", java.util.List.of(Map.of("userId", 7L, "sessionId", "session-1")),
                 "page", 1,
                 "size", 20,
                 "total", 1L,
-                "totalOnline", 1L
+                "totalOnlineUsers", 1L,
+                "totalOnlineSessions", 1L
         );
-        given(authSessionService.getOnlineUsers(1, 20)).willReturn(page);
+        given(presenceService.getOnlineUsers(1, 20, "wang", "127.0.0.1")).willReturn(page);
 
-        ApiResponse<Map<String, Object>> response = controller.getOnlineUsers(1, 20);
+        ApiResponse<Map<String, Object>> response = controller.getOnlineUsers(1, 20, "wang", "127.0.0.1");
 
         assertEquals(200, response.getCode());
         assertEquals(page, response.getData());
-        verify(authSessionService).getOnlineUsers(1, 20);
+        verify(presenceService).getOnlineUsers(1, 20, "wang", "127.0.0.1");
     }
 
     @Test
@@ -111,6 +112,7 @@ class AdminDashboardControllerTest {
         ApiResponse<Map<String, Object>> response = controller.forceLogoutUser(7L);
 
         verify(tokenService).revokeAllUserTokens(7L);
+        verify(presenceService).markUserOffline(7L);
         assertEquals(200, response.getCode());
         assertEquals(7L, response.getData().get("userId"));
         assertEquals(true, response.getData().get("forced"));

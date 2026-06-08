@@ -12,7 +12,29 @@ server {
 
     location = / {
         add_header Cache-Control "no-store";
-        try_files /apps/consumer-web/index.html =404;
+        try_files /index.html =404;
+    }
+
+    location ^~ /merchant/assets/ {
+        alias /usr/share/nginx/merchant-web/assets/;
+        add_header Cache-Control "public, max-age=31536000, immutable";
+    }
+
+    location ^~ /merchant/ {
+        root /usr/share/nginx/merchant-web;
+        add_header Cache-Control "no-store";
+        try_files /index.html =404;
+    }
+
+    location ^~ /admin/assets/ {
+        alias /usr/share/nginx/admin-web/assets/;
+        add_header Cache-Control "public, max-age=31536000, immutable";
+    }
+
+    location ^~ /admin/ {
+        root /usr/share/nginx/admin-web;
+        add_header Cache-Control "no-store";
+        try_files /index.html =404;
     }
 
     location /assets/ {
@@ -21,7 +43,7 @@ server {
     }
 
     location / {
-        try_files $uri /apps/consumer-web/index.html;
+        try_files $uri /index.html;
     }
 
     location /api/ {
@@ -33,6 +55,20 @@ server {
         proxy_set_header X-Forwarded-Proto $scheme;
         proxy_buffering off;
         proxy_read_timeout 300s;
+    }
+
+    location /ws/ {
+        proxy_pass http://campus_life_gateway;
+        proxy_http_version 1.1;
+        proxy_set_header Upgrade $http_upgrade;
+        proxy_set_header Connection "upgrade";
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+        proxy_buffering off;
+        proxy_read_timeout 3600s;
+        proxy_send_timeout 3600s;
     }
 
     location /uploads/ {
@@ -55,7 +91,7 @@ server {
 
     location = / {
         add_header Cache-Control "no-store";
-        try_files /apps/merchant-web/index.html =404;
+        try_files /index.html =404;
     }
 
     location ^~ /merchant/assets/ {
@@ -65,7 +101,7 @@ server {
 
     location /merchant/ {
         add_header Cache-Control "no-store";
-        try_files /apps/merchant-web/index.html =404;
+        try_files /index.html =404;
     }
 
     location /assets/ {
@@ -74,7 +110,7 @@ server {
     }
 
     location / {
-        try_files $uri /apps/merchant-web/index.html;
+        try_files $uri /index.html;
     }
 
     location /api/ {
@@ -86,6 +122,20 @@ server {
         proxy_set_header X-Forwarded-Proto $scheme;
         proxy_buffering off;
         proxy_read_timeout 300s;
+    }
+
+    location /ws/ {
+        proxy_pass http://campus_life_gateway;
+        proxy_http_version 1.1;
+        proxy_set_header Upgrade $http_upgrade;
+        proxy_set_header Connection "upgrade";
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+        proxy_buffering off;
+        proxy_read_timeout 3600s;
+        proxy_send_timeout 3600s;
     }
 
     location /uploads/ {
@@ -108,7 +158,7 @@ server {
 
     location = / {
         add_header Cache-Control "no-store";
-        try_files /apps/admin-web/index.html =404;
+        try_files /index.html =404;
     }
 
     location ^~ /admin/assets/ {
@@ -118,7 +168,7 @@ server {
 
     location /admin/ {
         add_header Cache-Control "no-store";
-        try_files /apps/admin-web/index.html =404;
+        try_files /index.html =404;
     }
 
     location /assets/ {
@@ -127,7 +177,7 @@ server {
     }
 
     location / {
-        try_files $uri /apps/admin-web/index.html;
+        try_files $uri /index.html;
     }
 
     location /api/ {
@@ -139,6 +189,20 @@ server {
         proxy_set_header X-Forwarded-Proto $scheme;
         proxy_buffering off;
         proxy_read_timeout 300s;
+    }
+
+    location /ws/ {
+        proxy_pass http://campus_life_gateway;
+        proxy_http_version 1.1;
+        proxy_set_header Upgrade $http_upgrade;
+        proxy_set_header Connection "upgrade";
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+        proxy_buffering off;
+        proxy_read_timeout 3600s;
+        proxy_send_timeout 3600s;
     }
 
     location /uploads/ {
