@@ -1,5 +1,6 @@
 import type { NavigationGuardNext, RouteLocationNormalized } from 'vue-router'
 import http from '../api/http'
+import { markPresenceOffline } from '../presence/presenceClient'
 import {
   clearAuthState,
   getCurrentUserObject,
@@ -86,6 +87,7 @@ export function saveLoginState(token: string, user: any, refreshToken?: string) 
 }
 
 export function clearLoginState() {
+  void markPresenceOffline()
   clearAuthState()
   localStorage.removeItem('redirectAfterLogin')
 }

@@ -996,12 +996,17 @@ export async function getAuditLogList(params: {
 // ==================== 在线用户 ====================
 
 export interface OnlineUser {
+  sessionId?: string
   userId: number
   username?: string
   nickname?: string
+  ip?: string
+  portal?: string
+  userAgent?: string
   loginIp?: string
   loginLocation?: string
   loginTime: string
+  lastSeenTime?: string
   lastActiveTime: string
 }
 
@@ -1011,6 +1016,8 @@ export interface OnlineUserListResponse {
   size: number
   total: number
   totalOnline?: number
+  totalOnlineUsers?: number
+  totalOnlineSessions?: number
 }
 
 /**

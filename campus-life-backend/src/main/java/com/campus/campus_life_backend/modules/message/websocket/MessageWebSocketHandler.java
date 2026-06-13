@@ -6,6 +6,7 @@ import com.campus.campus_life_backend.common.security.exception.UnauthenticatedE
 import com.campus.campus_life_backend.common.security.model.LoginPrincipal;
 import com.campus.campus_life_backend.common.security.model.PermissionCode;
 import com.campus.campus_life_backend.modules.message.service.MessageSendService;
+import com.campus.campus_life_backend.modules.presence.service.PresenceService;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.slf4j.Logger;
@@ -34,15 +35,18 @@ public class MessageWebSocketHandler extends TextWebSocketHandler {
     private final MessageSendService messageSendService;
     private final MessageRealtimeNotifier realtimeNotifier;
     private final MessageWebSocketSessionRegistry sessionRegistry;
+    private final PresenceService presenceService;
 
     public MessageWebSocketHandler(ObjectMapper objectMapper,
                                    MessageSendService messageSendService,
                                    MessageRealtimeNotifier realtimeNotifier,
-                                   MessageWebSocketSessionRegistry sessionRegistry) {
+                                   MessageWebSocketSessionRegistry sessionRegistry,
+                                   PresenceService presenceService) {
         this.objectMapper = objectMapper;
         this.messageSendService = messageSendService;
         this.realtimeNotifier = realtimeNotifier;
         this.sessionRegistry = sessionRegistry;
+        this.presenceService = presenceService;
     }
 
     @Override
@@ -53,6 +57,7 @@ public class MessageWebSocketHandler extends TextWebSocketHandler {
             return;
         }
         sessionRegistry.register(principal.getUserId(), session);
+        markPresence(session, principal);
     }
 
     @Override
@@ -64,6 +69,10 @@ public class MessageWebSocketHandler extends TextWebSocketHandler {
             clientMessageId = text(root, "clientMessageId");
 
             if ("ping".equals(type)) {
+                LoginPrincipal principal = resolvePrincipal(session);
+                if (principal != null) {
+                    markPresence(session, principal);
+                }
                 realtimeNotifier.sendPong(session);
                 return;
             }
@@ -119,6 +128,13 @@ public class MessageWebSocketHandler extends TextWebSocketHandler {
     private LoginPrincipal resolvePrincipal(WebSocketSession session) {
         Object value = session.getAttributes().get(MessageWebSocketHandshakeInterceptor.PRINCIPAL_ATTR);
         return value instanceof LoginPrincipal principal ? principal : null;
+    }
+
+    private void markPresence(WebSocketSession session, LoginPrincipal principal) {
+        Object sessionId = session.getAttributes().get(MessageWebSocketHandshakeInterceptor.SESSION_ID_ATTR);
+        if (sessionId instanceof String value && !value.isBlank()) {
+            presenceService.markOnline(principal, value, "message-ws", null, null);
+        }
     }
 
     private void runWithPrincipal(LoginPrincipal principal, Runnable action) {

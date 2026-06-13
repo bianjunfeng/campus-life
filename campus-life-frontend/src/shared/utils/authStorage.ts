@@ -3,6 +3,7 @@ const REFRESH_TOKEN_KEY = 'userRefreshToken'
 const USER_INFO_KEY = 'userInfo'
 const USER_ROLE_KEY = 'userRole'
 const CURRENT_USER_KEY = 'currentUser'
+const AUTH_CHANGED_EVENT = 'campus-auth-state-changed'
 
 export function initializeAuthStorage() {
   try {
@@ -45,6 +46,7 @@ export function getAuthToken(): string {
 
 export function setAuthToken(token: string) {
   sessionStorage.setItem(TOKEN_KEY, token)
+  emitAuthStateChanged()
 }
 
 export function getRefreshToken(): string {
@@ -126,4 +128,11 @@ export function clearAuthState() {
   clearStoredUserInfo()
   clearStoredUserRole()
   clearCurrentUser()
+  emitAuthStateChanged()
+}
+
+function emitAuthStateChanged() {
+  if (typeof window !== 'undefined') {
+    window.dispatchEvent(new Event(AUTH_CHANGED_EVENT))
+  }
 }

@@ -5,6 +5,7 @@ import com.campus.campus_life_backend.common.exception.BusinessException;
 import com.campus.campus_life_backend.common.result.ApiResponse;
 import com.campus.campus_life_backend.common.security.annotation.RequirePermission;
 import com.campus.campus_life_backend.common.security.support.CurrentUserAccessor;
+import com.campus.campus_life_backend.common.util.JwtUtil;
 import com.campus.campus_life_backend.modules.message.dto.ConversationDTO;
 import com.campus.campus_life_backend.modules.message.dto.MarkNotificationsReadRequest;
 import com.campus.campus_life_backend.modules.message.dto.MessageDTO;
@@ -34,17 +35,20 @@ public class MessageController {
     private final MessageSendService messageSendService;
     private final MessageNotificationService messageNotificationService;
     private final MessageWebSocketTicketService webSocketTicketService;
+    private final JwtUtil jwtUtil;
 
     public MessageController(CurrentUserAccessor currentUserAccessor,
                              MessageService messageService,
                              MessageSendService messageSendService,
                              MessageNotificationService messageNotificationService,
-                             MessageWebSocketTicketService webSocketTicketService) {
+                             MessageWebSocketTicketService webSocketTicketService,
+                             JwtUtil jwtUtil) {
         this.currentUserAccessor = currentUserAccessor;
         this.messageService = messageService;
         this.messageSendService = messageSendService;
         this.messageNotificationService = messageNotificationService;
         this.webSocketTicketService = webSocketTicketService;
+        this.jwtUtil = jwtUtil;
     }
 
     @PostMapping("/send")
@@ -74,7 +78,9 @@ public class MessageController {
 
     @PostMapping("/ws-ticket")
     public ApiResponse<MessageWebSocketTicketResponse> createWebSocketTicket() {
-        String ticket = webSocketTicketService.createTicket(currentUserAccessor.requirePrincipal());
+        String accessToken = currentUserAccessor.getCurrentAccessToken();
+        String sessionId = accessToken == null ? null : jwtUtil.getSessionIdFromToken(accessToken);
+        String ticket = webSocketTicketService.createTicket(currentUserAccessor.requirePrincipal(), sessionId);
         return ApiResponse.success(new MessageWebSocketTicketResponse(
                 ticket,
                 MessageWebSocketTicketService.EXPIRES_IN_SECONDS

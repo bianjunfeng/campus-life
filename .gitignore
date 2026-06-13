@@ -83,3 +83,5 @@ thesis_revision/
 phase0-boundary-freeze.md
 docs/敏感信息清单.md
 docs/images/新建 Markdown.md
+
+*.tar.gz

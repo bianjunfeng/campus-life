@@ -5,7 +5,6 @@ import com.campus.campus_life_backend.common.exception.BusinessException;
 import com.campus.campus_life_backend.modules.voucher.entity.ShoppingCartItem;
 import com.campus.campus_life_backend.modules.voucher.entity.Voucher;
 import com.campus.campus_life_backend.modules.voucher.entity.SeckillVoucher;
-import com.campus.campus_life_backend.modules.order.entity.VoucherOrder;
 import com.campus.campus_life_backend.modules.voucher.mapper.SeckillVoucherMapper;
 import com.campus.campus_life_backend.modules.voucher.mapper.ShoppingCartMapper;
 import com.campus.campus_life_backend.modules.voucher.mapper.VoucherMapper;
@@ -15,7 +14,6 @@ import org.springframework.transaction.annotation.Transactional;
 import java.time.Duration;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
-import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -26,18 +24,18 @@ public class ShoppingCartService {
     private final ShoppingCartMapper shoppingCartMapper;
     private final VoucherMapper voucherMapper;
     private final SeckillVoucherMapper seckillVoucherMapper;
-    private final VoucherService voucherService;
+    private final ShoppingCartCheckoutItemService checkoutItemService;
 
     public ShoppingCartService(
             ShoppingCartMapper shoppingCartMapper,
             VoucherMapper voucherMapper,
             SeckillVoucherMapper seckillVoucherMapper,
-            VoucherService voucherService
+            ShoppingCartCheckoutItemService checkoutItemService
     ) {
         this.shoppingCartMapper = shoppingCartMapper;
         this.voucherMapper = voucherMapper;
         this.seckillVoucherMapper = seckillVoucherMapper;
-        this.voucherService = voucherService;
+        this.checkoutItemService = checkoutItemService;
     }
 
     @Transactional
@@ -115,7 +113,6 @@ public class ShoppingCartService {
         shoppingCartMapper.clearByUser(userId);
     }
 
-    @Transactional
     public Map<String, Object> checkout(Long userId, List<Long> itemIds) {
         if (itemIds == null || itemIds.isEmpty()) {
             throw new BusinessException(BusinessErrorCode.CART_EMPTY);
@@ -127,32 +124,13 @@ public class ShoppingCartService {
 
         List<Map<String, Object>> successOrders = new ArrayList<>();
         List<Map<String, Object>> failedItems = new ArrayList<>();
-        List<Long> successItemIds = new ArrayList<>();
 
         for (ShoppingCartItem item : items) {
             try {
-                if (isSeckillVoucher(item.getVoucherId())) {
-                    throw new BusinessException(BusinessErrorCode.CART_SECKILL_CHECKOUT_NOT_ALLOWED);
-                }
-                VoucherOrder order = voucherService.claimVoucher(item.getVoucherId(), userId);
-                Map<String, Object> success = new HashMap<>();
-                success.put("cartItemId", item.getId());
-                success.put("voucherId", item.getVoucherId());
-                success.put("orderNo", order.getOrderNo());
-                success.put("payAmount", order.getPayAmount());
-                successOrders.add(success);
-                successItemIds.add(item.getId());
-            } catch (Exception e) {
-                Map<String, Object> fail = new HashMap<>();
-                fail.put("cartItemId", item.getId());
-                fail.put("voucherId", item.getVoucherId());
-                fail.put("reason", e.getMessage());
-                failedItems.add(fail);
+                successOrders.add(checkoutItemService.checkoutOne(userId, item));
+            } catch (BusinessException e) {
+                failedItems.add(failItem(item, e.getMessage()));
             }
-        }
-
-        if (!successItemIds.isEmpty()) {
-            shoppingCartMapper.deleteByIds(userId, successItemIds);
         }
 
         Map<String, Object> result = new HashMap<>();
@@ -161,6 +139,14 @@ public class ShoppingCartService {
         result.put("successCount", successOrders.size());
         result.put("failedCount", failedItems.size());
         return result;
+    }
+
+    private Map<String, Object> failItem(ShoppingCartItem item, String reason) {
+        Map<String, Object> fail = new HashMap<>();
+        fail.put("cartItemId", item == null ? null : item.getId());
+        fail.put("voucherId", item == null ? null : item.getVoucherId());
+        fail.put("reason", reason == null || reason.isBlank() ? "结算失败" : reason);
+        return fail;
     }
 
     private int normalizeQuantity(Integer quantity) {

@@ -8,9 +8,9 @@ import com.campus.campus_life_backend.modules.admin.dto.AdminApiInfoDTO;
 import com.campus.campus_life_backend.modules.admin.service.AdminApiCatalogService;
 import com.campus.campus_life_backend.modules.admin.service.AdminDashboardQueryService;
 import com.campus.campus_life_backend.modules.admin.service.AdminOperationLogQueryService;
-import com.campus.campus_life_backend.modules.auth.service.AuthSessionService;
 import com.campus.campus_life_backend.modules.auth.service.LoginAuditLogService;
 import com.campus.campus_life_backend.modules.auth.service.TokenService;
+import com.campus.campus_life_backend.modules.presence.service.PresenceService;
 import com.campus.campus_life_backend.modules.search.service.PostSearchService;
 import com.campus.campus_life_backend.modules.search.service.SearchOpsService;
 import com.campus.campus_life_backend.modules.search.service.UserSearchService;
@@ -33,8 +33,8 @@ public class AdminDashboardController {
     private final SearchOpsService searchOpsService;
     private final CurrentUserAccessor currentUserAccessor;
     private final TokenService tokenService;
-    private final AuthSessionService authSessionService;
     private final LoginAuditLogService loginAuditLogService;
+    private final PresenceService presenceService;
 
     public AdminDashboardController(AdminDashboardQueryService dashboardQueryService,
                                     AdminOperationLogQueryService operationLogQueryService,
@@ -44,8 +44,8 @@ public class AdminDashboardController {
                                     SearchOpsService searchOpsService,
                                     CurrentUserAccessor currentUserAccessor,
                                     TokenService tokenService,
-                                    AuthSessionService authSessionService,
-                                    LoginAuditLogService loginAuditLogService) {
+                                    LoginAuditLogService loginAuditLogService,
+                                    PresenceService presenceService) {
         this.dashboardQueryService = dashboardQueryService;
         this.operationLogQueryService = operationLogQueryService;
         this.adminApiCatalogService = adminApiCatalogService;
@@ -54,8 +54,8 @@ public class AdminDashboardController {
         this.searchOpsService = searchOpsService;
         this.currentUserAccessor = currentUserAccessor;
         this.tokenService = tokenService;
-        this.authSessionService = authSessionService;
         this.loginAuditLogService = loginAuditLogService;
+        this.presenceService = presenceService;
     }
 
     @GetMapping("/stats")
@@ -212,15 +212,18 @@ public class AdminDashboardController {
 
     @GetMapping("/monitor/online-users")
     public ApiResponse<Map<String, Object>> getOnlineUsers(@RequestParam(value = "page", defaultValue = "1") Integer page,
-                                                           @RequestParam(value = "size", defaultValue = "20") Integer size) {
+                                                           @RequestParam(value = "size", defaultValue = "20") Integer size,
+                                                           @RequestParam(value = "username", required = false) String username,
+                                                           @RequestParam(value = "ip", required = false) String ip) {
         currentUserAccessor.requireUserId();
-        return ApiResponse.success(authSessionService.getOnlineUsers(page, size));
+        return ApiResponse.success(presenceService.getOnlineUsers(page, size, username, ip));
     }
 
     @PostMapping("/monitor/online-users/{userId}/force-logout")
     public ApiResponse<Map<String, Object>> forceLogoutUser(@PathVariable Long userId) {
         currentUserAccessor.requireUserId();
         tokenService.revokeAllUserTokens(userId);
+        presenceService.markUserOffline(userId);
         return ApiResponse.success(Map.of("userId", userId, "forced", true));
     }
 

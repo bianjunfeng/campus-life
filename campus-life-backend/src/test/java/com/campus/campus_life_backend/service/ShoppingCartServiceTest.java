@@ -1,13 +1,15 @@
 package com.campus.campus_life_backend.service;
 
+import com.campus.campus_life_backend.common.exception.BusinessErrorCode;
+import com.campus.campus_life_backend.common.exception.BusinessException;
 import com.campus.campus_life_backend.modules.voucher.entity.ShoppingCartItem;
 import com.campus.campus_life_backend.modules.voucher.entity.Voucher;
 import com.campus.campus_life_backend.modules.voucher.entity.SeckillVoucher;
 import com.campus.campus_life_backend.modules.voucher.mapper.SeckillVoucherMapper;
 import com.campus.campus_life_backend.modules.voucher.mapper.ShoppingCartMapper;
 import com.campus.campus_life_backend.modules.voucher.mapper.VoucherMapper;
+import com.campus.campus_life_backend.modules.voucher.service.ShoppingCartCheckoutItemService;
 import com.campus.campus_life_backend.modules.voucher.service.ShoppingCartService;
-import com.campus.campus_life_backend.modules.voucher.service.VoucherService;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
@@ -37,7 +39,7 @@ class ShoppingCartServiceTest {
     private SeckillVoucherMapper seckillVoucherMapper;
 
     @Mock
-    private VoucherService voucherService;
+    private ShoppingCartCheckoutItemService checkoutItemService;
 
     @InjectMocks
     private ShoppingCartService shoppingCartService;
@@ -101,13 +103,14 @@ class ShoppingCartServiceTest {
     }
 
     @Test
-    void shouldRejectSeckillVoucherWhenCheckingOutCart() {
+    void shouldCollectBusinessFailureWhenCheckingOutCartItem() {
         ShoppingCartItem item = new ShoppingCartItem();
         item.setId(9L);
         item.setVoucherId(5L);
 
         when(shoppingCartMapper.findByIds(1L, List.of(9L))).thenReturn(List.of(item));
-        when(seckillVoucherMapper.findByVoucherId(5L)).thenReturn(new SeckillVoucher());
+        when(checkoutItemService.checkoutOne(1L, item))
+                .thenThrow(new BusinessException(BusinessErrorCode.CART_SECKILL_CHECKOUT_NOT_ALLOWED));
 
         Map<String, Object> result = shoppingCartService.checkout(1L, List.of(9L));
 
@@ -116,6 +119,6 @@ class ShoppingCartServiceTest {
         @SuppressWarnings("unchecked")
         Map<String, Object> failedItem = (Map<String, Object>) ((List<?>) result.get("failedItems")).get(0);
         assertEquals("秒杀券不支持购物车结算，请直接抢购下单", failedItem.get("reason"));
-        verify(voucherService, never()).claimVoucher(5L, 1L);
+        verify(checkoutItemService).checkoutOne(1L, item);
     }
 }

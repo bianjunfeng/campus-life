@@ -13,6 +13,7 @@ spring:
 
 gateway:
   backend-uri: http://backend:8080
+  backend-ws-uri: ${GATEWAY_BACKEND_WS_URI:ws://backend:8080}
   voucher-uri: http://backend:8080
   ai-uri: http://ai:8083
   gray:
@@ -25,4 +26,3 @@ gateway:
   auth:
     enabled: true
     jwt-secret: ${JWT_SECRET:please-change-this-docker-secret}
-

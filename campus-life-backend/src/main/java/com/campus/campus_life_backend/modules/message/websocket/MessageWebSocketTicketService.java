@@ -26,25 +26,37 @@ public class MessageWebSocketTicketService {
     }
 
     public String createTicket(LoginPrincipal principal) {
+        return createTicket(principal, null);
+    }
+
+    public String createTicket(LoginPrincipal principal, String sessionId) {
         if (principal == null || principal.getUserId() == null) {
             throw new IllegalArgumentException("用户未登录");
         }
         String ticket = UUID.randomUUID().toString().replace("-", "");
-        stringRedisTemplate.opsForValue().set(key(ticket), principal.getUserId().toString(), Duration.ofSeconds(EXPIRES_IN_SECONDS));
+        String value = principal.getUserId() + ":" + (sessionId == null ? "" : sessionId);
+        stringRedisTemplate.opsForValue().set(key(ticket), value, Duration.ofSeconds(EXPIRES_IN_SECONDS));
         return ticket;
     }
 
-    public Optional<LoginPrincipal> consumeTicket(String ticket) {
+    public Optional<ConsumedTicket> consumeTicket(String ticket) {
         if (!StringUtils.hasText(ticket)) {
             return Optional.empty();
         }
-        String userIdText = stringRedisTemplate.opsForValue().getAndDelete(key(ticket));
-        if (!StringUtils.hasText(userIdText)) {
+        String ticketValue = stringRedisTemplate.opsForValue().getAndDelete(key(ticket));
+        if (!StringUtils.hasText(ticketValue)) {
             return Optional.empty();
         }
         try {
+            String[] parts = ticketValue.split(":", 2);
+            String userIdText = parts[0];
+            String sessionId = parts.length > 1 && StringUtils.hasText(parts[1]) ? parts[1] : null;
             Long userId = Long.valueOf(userIdText);
-            return Optional.of(loginPrincipalFactory.create(userId));
+            LoginPrincipal principal = loginPrincipalFactory.create(userId);
+            if (principal == null) {
+                return Optional.empty();
+            }
+            return Optional.of(new ConsumedTicket(principal, sessionId));
         } catch (NumberFormatException ex) {
             return Optional.empty();
         }
@@ -52,5 +64,8 @@ public class MessageWebSocketTicketService {
 
     private String key(String ticket) {
         return KEY_PREFIX + ticket;
+    }
+
+    public record ConsumedTicket(LoginPrincipal principal, String sessionId) {
     }
 }

@@ -81,14 +81,16 @@ export function createAppConfig(appName, devPort) {
       build: {
         outDir: `dist/${appName}/apps/${appName}`,
         emptyOutDir: true,
+        chunkSizeWarningLimit: 700,
         rollupOptions: {
           input: appIndexPath,
           output: {
             manualChunks(id) {
-              if (id.includes('node_modules/echarts') || id.includes('node_modules/zrender')) {
+              const normalizedId = id.replace(/\\/g, '/')
+              if (normalizedId.includes('node_modules/echarts') || normalizedId.includes('node_modules/zrender')) {
                 return 'charts-vendor'
               }
-              if (id.includes('node_modules/vue') || id.includes('node_modules/vue-router')) {
+              if (normalizedId.includes('node_modules/vue') || normalizedId.includes('node_modules/vue-router')) {
                 return 'vue-vendor'
               }
             }

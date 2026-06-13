@@ -1,14 +1,16 @@
+# syntax=docker/dockerfile:1.7
 ARG MAVEN_IMAGE=maven:3.9-eclipse-temurin-17
 ARG JRE_IMAGE=eclipse-temurin:17-jre
 
 FROM ${MAVEN_IMAGE} AS build
 WORKDIR /workspace
 
+COPY deploy/docker/maven/settings.xml /usr/share/maven/conf/settings.xml
 COPY campus-life-backend/pom.xml campus-life-backend/pom.xml
 COPY campus-life-backend/src campus-life-backend/src
 
 WORKDIR /workspace/campus-life-backend
-RUN mvn -DskipTests clean package
+RUN --mount=type=cache,target=/root/.m2/repository mvn -DskipTests clean package
 
 FROM ${JRE_IMAGE}
 WORKDIR /app
